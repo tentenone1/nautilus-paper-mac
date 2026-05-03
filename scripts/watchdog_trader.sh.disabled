@@ -1,0 +1,71 @@
+#!/bin/bash
+# Watchdog for Nautilus paper trader — restarts if crashed
+# Runs via cron every 5 minutes
+
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROCESS_NAME="run_paper.py"
+LOG_FILE="$SCRIPT_DIR/logs/watchdog.log"
+PID_DIR="$SCRIPT_DIR/run"
+PID_FILE="$PID_DIR/trader.pid"
+
+mkdir -p "$SCRIPT_DIR/logs" "$PID_DIR"
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_FILE"
+}
+
+# Safety check: pgrep for existing run_paper processes (exclude this shell)
+EXISTING_PIDS=$(pgrep -f "[r]un_paper.py" 2>/dev/null || true)
+EXISTING_COUNT=$(echo "$EXISTING_PIDS" | grep -c . 2>/dev/null || echo 0)
+
+# Check if process is running by PID file
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE")
+    if kill -0 "$OLD_PID" 2>/dev/null; then
+        # Verify the PID actually matches our process
+        if pgrep -f "[r]un_paper.py" | grep -q "^$OLD_PID$" 2>/dev/null; then
+            log "ALIVE (PID $OLD_PID)"
+            exit 0
+        else
+            log "PID MISMATCH: file says $OLD_PID but process is different; will restart"
+            rm -f "$PID_FILE"
+        fi
+    else
+        log "DEAD (PID $OLD_PID found but not running)"
+        rm -f "$PID_FILE"
+    fi
+fi
+
+# Extra safety: if pgrep finds processes not tracked by PID file, kill them
+if [ "$EXISTING_COUNT" -gt 0 ]; then
+    log "WARNING: Found $EXISTING_COUNT untracked trader process(es): $EXISTING_PIDS — killing duplicates"
+    for dup_pid in $EXISTING_PIDS; do
+        kill "$dup_pid" 2>/dev/null || true
+    done
+    sleep 2
+    # Force-kill any survivors
+    for dup_pid in $(pgrep -f "[r]un_paper.py" 2>/dev/null || true); do
+        kill -9 "$dup_pid" 2>/dev/null || true
+    done
+    sleep 1
+fi
+
+# Restart
+log "RESTARTING paper trader..."
+cd "$SCRIPT_DIR" || {
+    log "FAILED: cd to $SCRIPT_DIR"
+    exit 1
+}
+
+nohup venv/bin/python3 run_paper.py >> "$SCRIPT_DIR/logs/trader.log" 2>&1 &
+NEW_PID=$!
+echo $NEW_PID > "$PID_FILE"
+
+# Give it 10 seconds to start
+sleep 10
+if kill -0 "$NEW_PID" 2>/dev/null; then
+    log "STARTED (PID $NEW_PID)"
+else
+    log "FAILED: exited immediately"
+    rm -f "$PID_FILE"
+fi

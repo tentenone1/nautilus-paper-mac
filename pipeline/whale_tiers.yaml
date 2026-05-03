@@ -1,0 +1,72 @@
+# Whale Tiering Configuration
+# Generated from whale_discovery.db (129 whales)
+# Tier boundaries based on alpha_score distribution
+#
+# Kelly Fraction: Proportion of Kelly-optimal bet size to use (0.0-1.0)
+#   Higher = more aggressive. Base Kelly = edge / odds.
+#   Conservative for lower-alpha whales.
+#
+# Max Position Cap: Maximum USD per single position
+#   Prevents over-concentration on any one whale's signal.
+#
+# Max Exposure: Maximum total USD allocated per whale across all positions
+#   Limits total risk from any single whale.
+
+tiers:
+  - name: "Elite"
+    slug: "tier1"
+    min_alpha: 90.0
+    max_alpha: 100.0
+    description: "Elite — top alpha, proven PnL, high win rate"
+    kelly_fraction: 0.30
+    max_position_cap: 2500
+    max_exposure: 5000
+    min_track_record: 10  # minimum trades before following
+
+  - name: "Strong"
+    slug: "tier2"
+    min_alpha: 70.0
+    max_alpha: 89.99
+    description: "Strong — good track record, solid metrics"
+    kelly_fraction: 0.20
+    max_position_cap: 1500
+    max_exposure: 3000
+    min_track_record: 10
+
+  - name: "Moderate"
+    slug: "tier3"
+    min_alpha: 50.0
+    max_alpha: 69.99
+    description: "Moderate — developing track record, moderate confidence"
+    kelly_fraction: 0.15
+    max_position_cap: 1000
+    max_exposure: 2000
+    min_track_record: 5
+
+  - name: "Low"
+    slug: "tier4"
+    min_alpha: 30.0
+    max_alpha: 49.99
+    description: "Low — limited conviction, low win rate"
+    kelly_fraction: 0.10
+    max_position_cap: 500
+    max_exposure: 1000
+    min_track_record: 3
+
+  - name: "Minimal"
+    slug: "tier5"
+    min_alpha: 0.0
+    max_alpha: 29.99
+    description: "Minimal — exploratory only, very low win rate"
+    kelly_fraction: 0.05
+    max_position_cap: 250
+    max_exposure: 500
+    min_track_record: 1
+
+# Global limits override tier limits when lower
+global:
+  max_open_positions_per_whale: 3
+  cooldown_minutes: 5  # minimum time between signals from same whale
+  min_signal_confidence: 0.50  # minimum confidence to act on signal
+  default_kelly_fraction: 0.15  # fallback if tier lookup fails
+  default_max_position_cap: 1000

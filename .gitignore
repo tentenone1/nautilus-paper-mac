@@ -1,0 +1,35 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets
+.env
+.env.*
+
+# Data (backed up separately)
+*.db
+data/
+research/
+pipeline/data/
+
+# Logs
+*.log
+*.log.*
+
+# Backups
+*.bak
+*.backup
+*.tar.gz
+*.orphan*
+
+# System
+.paper.pid
+.claw/
+.history/
+._*
+.DS_Store
+
+# Tool artifacts
+.aider*

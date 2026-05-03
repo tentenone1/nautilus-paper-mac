@@ -1,0 +1,21 @@
+[Unit]
+Description=Nautilus Whale Follower Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=elon-1
+Group=elon-1
+WorkingDirectory=/home/elon-1/workspace/nautilus-trading
+ExecStart=/home/elon-1/workspace/nautilus-trading/venv/bin/python dashboard.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/elon-1/workspace/nautilus-trading/dashboard.log
+StandardError=append:/home/elon-1/workspace/nautilus-trading/dashboard.log
+
+Environment="PYTHONUNBUFFERED=1"
+LimitNOFILE=65536
+
+[Install]
+WantedBy=default.target

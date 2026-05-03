@@ -1,0 +1,875 @@
+"""Whale wallet tracking engine for Polymarket — Enhanced with persistent state.
+
+Monitors specific high-performing wallets, detects their trades,
+and generates trading signals based on their activity.
+
+Uses the public data-api.polymarket.com endpoint with:
+- Redis-based persistent state (seen trades, sequence numbers)
+- Async API scanning with rate limiting
+- Signal validation before publishing
+"""
+
+from __future__ import annotations
+
+import os
+import sqlite3
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional, List
+
+import requests
+
+from nautilus_trader.adapters.polymarket.common.symbol import get_polymarket_instrument_id
+
+# Add components directory to path
+from pathlib import Path
+COMPONENTS_DIR = Path(__file__).parent.parent.parent / "components"
+sys_path_base = str(Path(__file__).parent.parent.parent)
+if sys_path_base not in __import__("sys").path:
+    __import__("sys").path.insert(0, sys_path_base)
+
+from components.state_manager import StateManager
+from components.api_rate_limiter import APIRateLimiter
+from components.signal_validator import SignalValidator
+
+
+class WhaleSignalType(Enum):
+    """Types of whale signals."""
+    BUY_YES = "buy_yes"
+    BUY_NO = "buy_no"
+    SELL_YES = "sell_yes"
+    SELL_NO = "sell_no"
+    LARGE_POSITION = "large_position"
+
+
+# Backward compat: whale_follower.py uses SignalSource
+class SignalSource(Enum):
+    """Where the signal came from (backward compat with whale_tracker.py)."""
+    KNOWN_WHALE = "known_whale"
+    LARGE_TRADE = "large_trade"
+    MODEL_INSIDER = "model_insider"
+
+# ── REST Price Cache (fallback for WebSocket drops) ───────────────────────────
+_PRICE_CACHE = {}
+_PRICE_CACHE_TIME = 0
+_PRICE_CACHE_TTL = 60  # seconds
+
+def get_market_prices(condition_id: str = None) -> dict:
+    """Fetch current market prices from Polymarket data-api.
+    
+    Caches results for 60s to avoid rate limits. Returns {condition_id: {yes_price, no_price, volume}}.
+    """
+    global _PRICE_CACHE, _PRICE_CACHE_TIME
+    now = time.time()
+    if now - _PRICE_CACHE_TIME < _PRICE_CACHE_TTL and _PRICE_CACHE:
+        return _PRICE_CACHE.get(condition_id, {}) if condition_id else _PRICE_CACHE
+    try:
+        resp = requests.get(
+            "https://data-api.polymarket.com/markets",
+            params={"limit": 100, "closed": "false"},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        prices = {}
+        for m in data:
+            cond = m.get("condition_id", "")
+            if cond:
+                prices[cond] = {
+                    "yes_price": float(m.get("yes_bid", 0) or m.get("yes_price", 0)),
+                    "no_price": float(m.get("no_bid", 0) or m.get("no_price", 0)),
+                    "volume": float(m.get("volume", 0)),
+                }
+        _PRICE_CACHE = prices
+        _PRICE_CACHE_TIME = now
+        return prices.get(condition_id, {}) if condition_id else prices
+    except Exception as e:
+        import logging
+        logging.getLogger("whale_tracker").debug("REST price fetch failed: %s", e)
+        return _PRICE_CACHE.get(condition_id, {}) if condition_id else _PRICE_CACHE
+
+
+@dataclass
+class WhaleIdentity:
+    """Known whale wallet with performance metrics."""
+    name: str
+    proxy_wallet: str  # The on-chain proxy wallet address
+    roi: float  # Historical ROI as decimal (0.62 = 62%)
+    win_rate: float
+    total_trades: int
+    avg_trade_size: float  # USD
+    style: str = ""
+    notes: str = ""
+
+
+_WHALE_DB_PATH = Path(__file__).resolve().parents[1] / "pipeline" / "data" / "whale_discovery.db"
+
+FALLBACK_WHALES = [
+    WhaleIdentity(name="weflyhigh", proxy_wallet="0x03e8a544e97eeff5753bc1e90d46e5ef22af1697", roi=0.86, win_rate=0.86, total_trades=500, avg_trade_size=50000, style="top_performer", notes="$863K PnL"),
+    WhaleIdentity(name="Anointed-Connect", proxy_wallet="0x8f037a2e4fd49d11267f4ab874ab7ba745ac64d6", roi=0.70, win_rate=0.70, total_trades=300, avg_trade_size=40000, style="top_performer", notes="$269K PnL"),
+    WhaleIdentity(name="How.Dare.You", proxy_wallet="0x4bbe10ba5b7f6df147c0dae17b46c44a6e562cf3", roi=0.90, win_rate=0.90, total_trades=100, avg_trade_size=15000, style="high_efficiency", notes="Alpha=90, $62K PnL"),
+    WhaleIdentity(name="redskinrick", proxy_wallet="0xe24838258b572f1771dffba3bcdde57a78def293", roi=0.80, win_rate=0.80, total_trades=80, avg_trade_size=10000, style="high_efficiency", notes="Alpha=80, $31K PnL"),
+]
+
+def load_whales_from_db():
+    if not _WHALE_DB_PATH.exists():
+        print(f"DB not found at {_WHALE_DB_PATH}, using {len(FALLBACK_WHALES)} fallback whales")
+        return list(FALLBACK_WHALES)
+    try:
+        conn = sqlite3.connect(str(_WHALE_DB_PATH))
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT address, name, alpha_score, pnl, volume, win_rate, total_trades FROM whales WHERE alpha_score >= 60 ORDER BY alpha_score DESC, pnl DESC").fetchall()
+        conn.close()
+        whales = []
+        for r in rows:
+            avg = 25000 if r["total_trades"] < 5 else (r["volume"] or 0) / max(r["total_trades"], 1)
+            whales.append(WhaleIdentity(
+                name=r["name"] or r["address"][:10],
+                proxy_wallet=r["address"],
+                roi=min(max(r["pnl"] / 100000 if r["pnl"] else 0, 0), 1.0),
+                win_rate=r["win_rate"] or 0.5,
+                total_trades=r["total_trades"] or 0,
+                avg_trade_size=avg,
+                style="discovered",
+                notes=f"Alpha={r['alpha_score']:.0f}, PnL=${r['pnl']:,.0f}",
+            ))
+        if not whales:
+            return list(FALLBACK_WHALES)
+        print(f"Loaded {len(whales)} whales from DB")
+        return whales
+    except Exception as e:
+        print(f"DB error: {e}, using {len(FALLBACK_WHALES)} fallback whales")
+        return list(FALLBACK_WHALES)
+
+
+@dataclass
+class WhaleTrade:
+    """A single trade by a whale wallet."""
+    whale_name: str
+    whale_wallet: str
+    condition_id: str
+    token_id: str
+    outcome: str  # "Yes" or "No"
+    side: str  # "BUY" or "SELL"
+    size: float  # Number of shares
+    price: float  # Price per share (0-1)
+    usd_value: float  # size * price
+    timestamp: float
+    whale_address: str = ""
+    market_title: str = ""
+    market_slug: str = ""
+
+
+@dataclass
+class WhaleSignal:
+    """Trading signal generated from whale activity."""
+    signal_type: WhaleSignalType
+    condition_id: str
+    token_id: str
+    outcome: str
+    side: str  # "buy" or "sell"
+    confidence: float  # 0-1, based on whale's historical performance
+    target_price: float  # Entry price
+    suggested_size_usd: float
+    whale_name: str
+    whale_roi: float
+    timestamp: float
+    reason: str = ""
+    market_title: str = ""
+    market_category: str = ""
+    whale_address: str = ""  # proxy wallet address — added 2026-05-02
+    edge_score: float = 0.0  # edge score from tracker analysis
+
+    # Backward compat: whale_follower.py checks signal.source
+    @property
+    def source(self):
+        return SignalSource.KNOWN_WHALE
+
+
+def _categorize_market(title: str) -> str:
+    """Simple keyword-based market categorizer."""
+    if not title:
+        return "general"
+    t = title.lower()
+    t = " " + t + " "  # pad with spaces for boundary-safe keyword matching
+    if any(w in t for w in ["vs.", " vs ", "spread", "point", "over/under", "o/u", "goal", "touchdown",
+                             " nfl ", " nba ", " mlb ", " nhl ", " ufc ", "boxing", "championship",
+                             "game", "match", "player", "team", "draft", "medal", "gold",
+                             "soccer", "football", "basketball", "baseball", "hockey",
+                             "tennis", "fight", "inning", "recruit",
+                             "champions", "uefa", "premier", "la liga", "serie a", "bundesliga",
+                             "europa league", "final", "cup", "score", " win ", "race",
+                             "round", "series", " f1 ", "formula", "mma", "league",
+                             "olympic", "grand slam", "playoff", "semi", "qualif",
+                             "fc ", " united", "liverpool", "city ", "real ",
+                             "barça", "barcelona", "juventus", "bayern", "psg",
+                             " ncaa ", "college", "athletic", "athlete",
+                             "total", "over ", "under ", "handicap",
+                             "atp", "wta", "golf", "pga", "masters",
+                             "gp", "derby", "grand prix",
+                             "lol", "dota", "valorant", "csgo", "esports"]):
+        return "sports"
+    if any(w in t for w in ["president", "election", "congress", "senate", "house", "governor",
+                             "senator", "democrat", "republican", "vote", "poll", "candidate",
+                             "trump", "biden", "harris", "aoc", "newsom", "midterm",
+                             "political", "impeach", "cabinet", "scotus", "supreme court"]):
+        return "politics"
+    if any(w in t for w in ["gdp", "inflation", "interest rate", "fed", "recession",
+                             "unemployment", "stock market", "tariff", "economy",
+                             "oil", "crude", "wti", "natural gas", "copper",
+                             "commodities", "gold price"]):
+        return "economics"
+    if any(w in t for w in ["bitcoin", "ethereum", "btc", "eth", "solana", "sol", "crypto",
+                             "token", "coin", "defi", "nft", "blockchain", "halving",
+                             "stablecoin", "usdc", "usdt", "price", " ath ",
+                             "up or down", "above", "below", "bitcoin etf", "eth etf",
+                             "layer", "arbitrum", "optimism", "polygon", "avalanche",
+                             "chainlink", "uniswap", "aave", "pump", "meme coin",
+                             "sui", "aptos", "near", "ton", "base ",
+                             "sei", "injective", "ordinals", "manta", "zksync",
+                             "hyperliquid", "berachain", "monad", "movement"]):
+        return "crypto"
+    if any(w in t for w in ["war", "conflict", "invasion", "sanction", "nato", "china",
+                             "russia", "ukraine", "taiwan", "iran", "israel", "gaza",
+                             "missile", "nuclear", "military", "ceasefire", "geopolitical"]):
+        return "geopolitics"
+    if any(w in t for w in ["oscar", "grammy", "emmy", "award", "movie", "film", "celebrity",
+                             "entertainment", "box office", "billboard", "album"]):
+        return "entertainment"
+    if any(w in t for w in ["ai", "artificial intelligence", "chatgpt", "gpt", "openai",
+                             "space", "nasa", "spacex", "starship", "launch", "rocket",
+                             "science", "technology", "tech", "robot"]):
+        return "technology"
+    if any(w in t for w in ["ipo", "merger", "acquisition", "earnings", "revenue",
+                             "ceo", "startup", "venture", "funding", "business"]):
+        return "business"
+    if any(w in t for w in ["hurricane", "earthquake", "weather", "temperature",
+                             "climate", "storm", "flood", "wildfire"]):
+        return "weather"
+    return "general"
+
+
+class WhaleTracker:
+    """Tracks whale wallet activity and generates trading signals.
+
+    Enhanced with:
+    - Persistent state (Redis + disk fallback)
+    - Async API scanning with rate limiting
+    - Signal validation before publishing
+    """
+
+    DATA_API = "https://data-api.polymarket.com"
+    LARGE_TRADE_THRESHOLD = 5000.0  # USD threshold for large trade detection
+    
+    def __init__(
+        self,
+        redis_url: str = "redis://localhost:6379",
+        db: int = 0,
+        fallback_memory: bool = True,
+        fallback_dir: Optional[str] = None,
+        min_confidence: float = 0.60,
+        min_trade_size: float = 5000.0,
+        max_trade_size: float = 200000.0,
+        scan_interval: float = 60.0,
+    ):
+        """Initialize whale tracker.
+
+        Args:
+            redis_url: Redis connection URL
+            db: Redis database number
+            fallback_memory: If True, also maintain in-memory state
+            fallback_dir: Directory for disk backups
+            min_confidence: Minimum confidence to accept signal
+            min_trade_size: Minimum trade size in USD
+            max_trade_size: Maximum trade size in USD
+            scan_interval: Seconds between scans (if using time-based scan)
+        """
+        db_whales = load_whales_from_db()
+        self.whales = {w.proxy_wallet: w for w in db_whales}
+        self.whale_names = {w.name: w for w in db_whales}
+        
+        # Initialize state manager
+        self._state_manager = StateManager(
+            redis_url=redis_url,
+            db=db,
+            fallback_memory=fallback_memory,
+            fallback_dir=fallback_dir,
+        )
+        
+        # Initialize rate limiter
+        self._rate_limiter = APIRateLimiter(
+            base_url=self.DATA_API,
+            default_timeout=10.0,
+            default_limit=100,
+            max_retries=5,
+        )
+        
+        # Initialize signal validator
+        self._validator = SignalValidator(
+            min_confidence=min_confidence,
+            min_trade_size=min_trade_size,
+            max_trade_size=max_trade_size,
+        )
+        
+        self.seen_trades: set = set()  # Fallback: in-memory dedup
+        self.seen_positions: dict = {}  # Backward compat with whale_follower
+        self.signal_history: list = []
+        self.last_scan_time: float = 0.0
+        self.last_scan_offset: int = 0  # For pagination
+        self.scan_interval: float = scan_interval
+        self.SCAN_INTERVAL: float = scan_interval  # Backward compat alias
+        
+        # Load discovered whales from pipeline DB
+        self._load_discovered_whales()
+    
+    def _fetch_positions(self, address: str) -> list[dict]:
+        """Backward compat: fetch wallet positions from data API."""
+        try:
+            url = f"{self.DATA_API}/positions?user={address}&limit=50"
+            resp = requests.get(url, timeout=15)
+            return resp.json() if resp.status_code == 200 else []
+        except Exception:
+            return []
+    
+    def _process_position(self, pos: dict, whale: WhaleIdentity, now: float) -> Optional[WhaleSignal]:
+        """Backward compat: process a single position, return signal if new."""
+        condition_id = pos.get("conditionId", "")
+        size = float(pos.get("size", 0))
+        # data-api uses avgPrice/curPrice, not "price"
+        price = float(pos.get("avgPrice", pos.get("curPrice", pos.get("price", 0))))
+        if price <= 0:
+            return None  # skip positions without price data
+        title = pos.get("title", "")
+        # data-api doesn't have "outcome" directly; infer from asset/token info
+        outcome = pos.get("outcome", "")
+        if not outcome:
+            # Try to get from tokens array
+            tokens = pos.get("tokens", [])
+            if tokens:
+                # The asset field usually maps to the token_id
+                asset = pos.get("asset", "")
+                for t in tokens:
+                    if t.get("token_id") == asset:
+                        outcome = t.get("outcome", "")
+                        break
+            if not outcome and tokens:
+                outcome = tokens[0].get("outcome", "Yes")
+
+        if size < 100 or price <= 0.001:
+            return None
+
+        # Deduplicate
+        pos_key = f"{whale.proxy_wallet}:{condition_id}:{outcome}"
+        if pos_key in self.seen_positions:
+            return None
+        self.seen_positions[pos_key] = now
+
+        # Signal generation
+        confidence = min(whale.win_rate + abs(price - 0.5) * 0.5, 0.95)
+        suggested = size * 0.25
+
+        return WhaleSignal(
+            signal_type=WhaleSignalType.BUY_YES if outcome.lower() == "yes" else WhaleSignalType.BUY_NO,
+            condition_id=condition_id,
+            token_id=pos.get("asset", pos.get("token_id", "")),
+            outcome=outcome,
+            side="buy",
+            confidence=confidence,
+            target_price=price,
+            suggested_size_usd=suggested,
+            whale_name=whale.name,
+            whale_roi=whale.roi,
+            timestamp=now,
+            reason=f"{whale.name} ({whale.win_rate:.0%} WR, {whale.style}) buy {outcome} ${size:,.0f} @ {price:.3f}",
+            market_title=title,
+            market_category=_categorize_market(title),
+            whale_address=whale.proxy_wallet,
+            # Edge score: weighted combination of win_rate (primary) and roi (secondary)
+            # Avoids overly generous ROI fallback when win_rate is 0 or None
+            edge_score=min((whale.win_rate or 0.0) * 0.8 + (whale.roi or 0.0) * 0.2, 0.95),
+        )
+    
+    def scan_known_whales(self) -> list:
+        """Poll positions for known whales using a thread pool (non-blocking)."""
+        import time as _time
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        now = _time.time()
+        if now - self.last_scan_time < self.SCAN_INTERVAL:
+            return []
+        
+        signals = []
+        wallets = list(self.whales.items())
+        
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_map = {
+                executor.submit(self._fetch_positions, wallet): wallet
+                for wallet, _ in wallets
+            }
+            for future in as_completed(future_map):
+                wallet = future_map[future]
+                whale = self.whales.get(wallet)
+                try:
+                    positions = future.result()
+                    for pos in positions:
+                        signal = self._process_position(pos, whale, now)
+                        if signal:
+                            signals.append(signal)
+                            self.signal_history.append(signal)
+                except Exception:
+                    pass  # individual wallet failure is non-fatal
+        
+        self.last_scan_time = now
+        # Cap signals to prevent OOM from processing too many at once
+        MAX_SIGNALS = 100
+        if len(signals) > MAX_SIGNALS:
+            signals = signals[:MAX_SIGNALS]
+        # Cap signal_history to prevent unbounded memory growth
+        if len(self.signal_history) > 1000:
+            self.signal_history = self.signal_history[-500:]
+        return signals
+    
+    def _load_discovered_whales(self) -> None:
+        """Load discovered whales from pipeline database."""
+        try:
+            import sqlite3
+            import os
+            pipeline_db = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "pipeline", "data", "whale_discovery.db"
+            )
+            if not os.path.exists(pipeline_db):
+                return
+            
+            conn = sqlite3.connect(pipeline_db)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=5000")
+            rows = conn.execute(
+                "SELECT address, name, alpha_score, pnl, volume, total_trades "
+                "FROM whales WHERE alpha_score >= 70 ORDER BY alpha_score DESC"
+            ).fetchall()
+            conn.close()
+            
+            added = 0
+            for row in rows:
+                addr, name, alpha, pnl, vol, trades = row
+                if addr not in self.whales:
+                    whale = WhaleIdentity(
+                        name=name,
+                        proxy_wallet=addr,
+                        roi=alpha / 100,
+                        win_rate=alpha / 100,
+                        total_trades=trades,
+                        avg_trade_size=vol / max(trades, 1),
+                        style="discovered",
+                        notes=f"Pipeline discovered: alpha={alpha}, PnL=${pnl:,.0f}",
+                    )
+                    self.register_whale(whale)
+                    added += 1
+            
+            self.seen_trades.add(f"__pipeline_loaded_{added}_whales__")
+        except Exception as e:
+            pass
+    
+    def register_whale(self, whale: WhaleIdentity) -> None:
+        """Add a new whale to track."""
+        self.whales[whale.proxy_wallet] = whale
+        self.whale_names[whale.name] = whale.proxy_wallet
+    
+    def scan_whale_trades_sync(
+        self,
+        condition_ids: Optional[list[str]] = None,
+    ) -> List[WhaleSignal]:
+        """Scan for recent whale trades and generate signals.
+
+        Enhanced with:
+        - Rate limiting and retries
+        - Persistent state (Redis + disk)
+        - Signal validation
+
+        Args:
+            condition_ids: Specific markets to scan. None = scan all recent trades.
+
+        Returns:
+            List of new trading signals.
+        """
+        now = time.time()
+        
+        # Check scan interval (if using time-based scan)
+        if now - self.last_scan_time < self.scan_interval:
+            return []
+        
+        self.last_scan_time = now
+        
+        signals = []
+        
+        try:
+            # Fetch recent trades from data API with rate limiting
+            trades = self._rate_limiter.scan_trades(
+                condition_ids=condition_ids,
+                offset=self.last_scan_offset,
+            )
+            
+            if not trades:
+                return []
+            
+            # Process trades
+            for trade_data in trades[:50]:  # Check last 50 trades
+                trade = self._parse_trade(trade_data)
+                if not trade:
+                    continue
+                
+                # Check if this trade is from a known whale
+                whale = self._match_whale(trade)
+                if not whale:
+                    continue
+                
+                # Generate sequence number
+                sequence = self._state_manager.get_sequence()
+                timestamp_ms = int(time.time() * 1000)
+                
+                # Check if seen before (persistent dedup)
+                if self._state_manager.has_seen_trade(
+                    trade.whale_wallet,
+                    trade.condition_id,
+                    timestamp_ms,
+                    sequence,
+                ):
+                    continue
+                
+                # Mark as seen
+                self._state_manager.mark_seen_trade(
+                    trade.whale_wallet,
+                    trade.condition_id,
+                    timestamp_ms,
+                    sequence,
+                )
+                
+                # Generate signal if trade meets threshold
+                if trade.usd_value >= whale.avg_trade_size * 0.1:  # At least 10% of avg
+                    signal = self._generate_signal(trade, whale)
+                    if signal:
+                        # Validate signal
+                        result = self._validator.validate_signal(
+                            whale_name=whale.name,
+                            whale_wallet=trade.whale_wallet,
+                            condition_id=trade.condition_id,
+                            token_id=trade.token_id,
+                            side=trade.side,
+                            outcome=trade.outcome,
+                            size=trade.size,
+                            price=trade.price,
+                            usd_value=trade.usd_value,
+                            timestamp=trade.timestamp,
+                        )
+                        
+                        if result.is_valid:
+                            signals.append(signal)
+                            self.signal_history.append(signal)
+                            self._state_manager.save_state()
+                        
+                        elif result.is_rejected:
+                            self._state_manager.save_state()
+            
+            # Update offset for next scan
+            if trades:
+                self.last_scan_offset = self.last_scan_offset + 50
+                
+            # Rate limit: wait before next scan
+            self._rate_limiter._maybe_throttle()
+            
+        except Exception as e:
+            # Silently skip errors - whale tracking shouldn't crash the strategy
+            self._state_manager.save_state()
+        
+        return signals
+
+    def detect_large_trades(self, trades: list[dict]) -> list[WhaleSignal]:
+        """Process TradeTick stream data for large trades.
+        
+        Backward compat: whale_follower.py calls this method to process
+        buffered large trades (>= $1000) from TradeTick streams.
+        
+        Args:
+            trades: List of raw trade data from TradeTick streams
+        
+        Returns:
+            List of WhaleSignal for trades meeting the threshold
+        """
+        signals = []
+        now = time.time()
+        
+        for trade in trades:
+            size = float(trade.get("size", 0))
+            price = float(trade.get("price", 0))
+            usd = size * price
+            
+            if usd < self.LARGE_TRADE_THRESHOLD:
+                continue
+            
+            condition_id = trade.get("conditionId", "")
+            outcome = trade.get("outcome", "")
+            side_raw = trade.get("side", "BUY")
+            side = "buy" if side_raw == "BUY" else "sell"
+            proxy_wallet = trade.get("proxyWallet", "")
+            title = trade.get("title", "")
+            
+            # Deduplicate - use timestamp as part of key
+            trade_key = f"{proxy_wallet}:{condition_id}:{now:.0f}"
+            if trade_key in self.seen_positions:
+                continue
+            self.seen_positions[trade_key] = now
+            
+            # Confidence based on trade size (for unknown/large-trade whales)
+            confidence = min(0.50 + (usd / 100000) * 0.2, 0.70)
+            # Edge score is more conservative than confidence for unknown whales
+            # since we have no track record — caps at 0.50 for the largest trades
+            large_trade_edge = min(0.25 + (usd / 100000) * 0.15, 0.50)
+            
+            signals.append(WhaleSignal(
+                signal_type=WhaleSignalType.LARGE_POSITION,
+                condition_id=condition_id,
+                token_id="unknown",  # Unknown whale, no specific token
+                outcome=outcome,
+                side=side,
+                confidence=confidence,
+                target_price=price,
+                suggested_size_usd=usd * 0.25,
+                whale_name="Unknown Whale",
+                whale_roi=0.50,  # Default ROI for unknown whales
+                timestamp=now,
+                reason=f"Large trade {side} {outcome} ${usd:,.0f} @ {price:.3f}",
+                market_title=title,
+                market_category=_categorize_market(title),
+                whale_address=proxy_wallet,
+                edge_score=large_trade_edge,
+            ))
+        
+        return signals
+
+    def scan_whale_trades_by_offset(
+        self,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> List[WhaleSignal]:
+        """Scan for whale trades starting from a specific offset.
+
+        Args:
+            offset: Pagination offset
+            limit: Trades per page
+
+        Returns:
+            List of new trading signals
+        """
+        self.last_scan_offset = offset
+        
+        trades = self._rate_limiter.scan_trades(
+            condition_ids=None,  # Scan all
+            offset=offset,
+            limit=limit,
+        )
+        
+        if not trades:
+            return []
+        
+        signals = []
+        
+        for trade_data in trades:
+            trade = self._parse_trade(trade_data)
+            if not trade:
+                continue
+            
+            whale = self._match_whale(trade)
+            if not whale:
+                continue
+            
+            # Generate sequence number
+            sequence = self._state_manager.get_sequence()
+            timestamp_ms = int(time.time() * 1000)
+            
+            # Check if seen before
+            if self._state_manager.has_seen_trade(
+                trade.whale_wallet,
+                trade.condition_id,
+                timestamp_ms,
+                sequence,
+            ):
+                continue
+            
+            # Mark as seen
+            self._state_manager.mark_seen_trade(
+                trade.whale_wallet,
+                trade.condition_id,
+                timestamp_ms,
+                sequence,
+            )
+            
+            # Generate and validate signal
+            signal = self._generate_signal(trade, whale)
+            if signal:
+                result = self._validator.validate_signal(
+                    whale_name=whale.name,
+                    whale_wallet=trade.whale_wallet,
+                    condition_id=trade.condition_id,
+                    token_id=trade.token_id,
+                    side=trade.side,
+                    outcome=trade.outcome,
+                    size=trade.size,
+                    price=trade.price,
+                    usd_value=trade.usd_value,
+                    timestamp=trade.timestamp,
+                )
+                
+                if result.is_valid:
+                    signals.append(signal)
+                    self.signal_history.append(signal)
+            
+            # Rate limit
+            self._rate_limiter._maybe_throttle()
+        
+        return signals
+    
+    def _parse_trade(self, trade_data: dict) -> Optional[WhaleTrade]:
+        """Parse raw trade data from data API into WhaleTrade."""
+        try:
+            proxy_wallet = trade_data.get("proxyWallet", "")
+            condition_id = trade_data.get("conditionId", "")
+            side = trade_data.get("side", "")
+            size = float(trade_data.get("size", 0))
+            price = float(trade_data.get("price", 0))
+            timestamp = float(trade_data.get("timestamp", 0))
+            outcome = trade_data.get("outcome", "Unknown")
+            market_title = trade_data.get("title", "")
+            market_slug = trade_data.get("slug", "")
+            
+            # Asset ID is the token ID
+            token_id = trade_data.get("asset", "")
+            
+            if size <= 0 or price <= 0 or not proxy_wallet:
+                return None
+            
+            return WhaleTrade(
+                whale_name="",  # Will be filled by _match_whale
+                whale_wallet=proxy_wallet,
+                condition_id=condition_id,
+                token_id=token_id,
+                outcome=outcome,
+                side=side,
+                size=size,
+                price=price,
+                usd_value=size * price,
+                timestamp=timestamp,
+                market_title=market_title,
+                market_slug=market_slug,
+            )
+        except (ValueError, KeyError, TypeError):
+            return None
+    
+    def _match_whale(self, trade: WhaleTrade) -> Optional[WhaleIdentity]:
+        """Check if a trade is from a known whale wallet."""
+        return self.whales.get(trade.whale_wallet)
+    
+    def _generate_signal(
+        self,
+        trade: WhaleTrade,
+        whale: WhaleIdentity,
+    ) -> Optional[WhaleSignal]:
+        """Generate a trading signal from a whale trade."""
+        try:
+            # Map whale trade to our signal
+            if trade.side == "BUY":
+                signal_type = (
+                    WhaleSignalType.BUY_YES
+                    if trade.outcome.lower() == "yes"
+                    else WhaleSignalType.BUY_NO
+                )
+                side = "buy"
+            else:
+                signal_type = (
+                    WhaleSignalType.SELL_YES
+                    if trade.outcome.lower() == "yes"
+                    else WhaleSignalType.SELL_NO
+                )
+                side = "sell"
+            
+            # Confidence based on whale's historical performance
+            confidence = min(whale.win_rate * 0.8 + 0.2, 0.95)
+            
+            # Suggested size based on Kelly fraction
+            suggested_size = trade.usd_value * 0.25  # 25% of whale's size
+            
+            return WhaleSignal(
+                signal_type=signal_type,
+                condition_id=trade.condition_id,
+                token_id=trade.token_id,
+                outcome=trade.outcome,
+                side=side,
+                confidence=confidence,
+                target_price=trade.price,
+                suggested_size_usd=suggested_size,
+                whale_name=whale.name,
+                whale_roi=whale.roi,
+                # Edge score: weighted combination of win_rate (primary) and roi (secondary)
+                # Avoids overly generous ROI fallback when win_rate is 0 or None
+                edge_score=min((whale.win_rate or 0.0) * 0.8 + (whale.roi or 0.0) * 0.2, 0.95),
+                timestamp=trade.timestamp,
+                reason=f"{whale.name} ({whale.roi:.0%} ROI, {whale.style}) {side} {trade.outcome} "
+                       f"${trade.usd_value:,.0f} @ {trade.price:.3f}",
+                market_title=trade.market_title,
+                market_category=_categorize_market(trade.market_title),
+            )
+        except Exception:
+            return None
+    
+    def get_whale_summary(self) -> dict:
+        """Get summary of tracked whales and their recent activity."""
+        summary = {
+            "whales_tracked": len(self.whales),
+            "signals_generated": len(self.signal_history),
+            "whales": {},
+        }
+        
+        for wallet, whale in self.whales.items():
+            whale_signals = [
+                s for s in self.signal_history if s.whale_name == whale.name
+            ]
+            summary["whales"][whale.name] = {
+                "roi": whale.roi,
+                "win_rate": whale.win_rate,
+                "style": whale.style,
+                "recent_signals": len(whale_signals),
+                "avg_signal_size": (
+                    sum(s.suggested_size_usd for s in whale_signals) / len(whale_signals)
+                    if whale_signals
+                    else 0
+                ),
+            }
+        
+        return summary
+    
+    def get_state_summary(self) -> dict:
+        """Get state manager summary."""
+        return self._state_manager.get_summary()
+    
+    def get_rate_limit_info(self) -> dict:
+        """Get rate limiter info."""
+        return self._rate_limiter.get_rate_limit_info()
+    
+    def reset(self) -> None:
+        """Reset tracker state."""
+        self._state_manager.reset_sequence()
+        self._rate_limiter.reset()
+        self.last_scan_time = 0.0
+        self.last_scan_offset = 0
+        self.seen_trades.clear()
+        self.signal_history.clear()
+    
+    def cleanup_old_trades(self, max_age_days: int = 365) -> None:
+        """Clean up old trade entries."""
+        self._state_manager.cleanup_old_trades(max_age_days)
+    
+    def save_state(self) -> None:
+        """Force save state."""
+        self._state_manager.save_state()

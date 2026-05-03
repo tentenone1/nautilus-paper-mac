@@ -1,0 +1,73 @@
+{
+  "tiers": {
+    "elite": {
+      "alpha_min": 90,
+      "alpha_max": 100,
+      "kelly_multiplier": 1.0,
+      "max_position_usd": 1000,
+      "max_concurrent_positions": 5,
+      "min_confidence": 0.25,
+      "min_edge_score": 0.40
+    },
+    "established": {
+      "alpha_min": 70,
+      "alpha_max": 89,
+      "kelly_multiplier": 0.75,
+      "max_position_usd": 500,
+      "max_concurrent_positions": 8,
+      "min_confidence": 0.30,
+      "min_edge_score": 0.30
+    },
+    "emerging": {
+      "alpha_min": 50,
+      "alpha_max": 69,
+      "kelly_multiplier": 0.50,
+      "max_position_usd": 250,
+      "max_concurrent_positions": 10,
+      "min_confidence": 0.40,
+      "min_edge_score": 0.20
+    },
+    "speculative": {
+      "alpha_min": 0,
+      "alpha_max": 49,
+      "kelly_multiplier": 0.25,
+      "max_position_usd": 100,
+      "max_concurrent_positions": 5,
+      "min_confidence": 0.50,
+      "min_edge_score": 0.10
+    }
+  },
+  "defaults": {
+    "kelly_multiplier": 0.5,
+    "max_position_usd": 250,
+    "max_concurrent_positions": 5,
+    "min_confidence": 0.30,
+    "min_edge_score": 0.15
+  },
+  "overrides": {
+    "tag_based": {
+      "top_performer": {"tier_boost": 1, "description": "Boost tier by 1 level"},
+      "high_profile": {"tier_boost": 1, "description": "Boost tier by 1 level"},
+      "high_efficiency": {"min_confidence_reduction": 0.05, "description": "Reduce min confidence by 0.05"}
+    }
+  },
+  "edge_kelly_mapping": {
+    "description": "Maps edge_score to base Kelly fraction — calibrated from 1228-trade empirical analysis (2026-05-03). Edge 0.50-0.65 = sweet spot (58% WR, +45% avg ret). Edge >0.80 shows 46% WR but oversized losses drag total PnL negative. Edge 0.00-0.35 = near-zero allocation.",
+    "ranges": [
+      {"min": 0.00, "max": 0.20, "kelly_fraction": 0.03},
+      {"min": 0.20, "max": 0.35, "kelly_fraction": 0.05},
+      {"min": 0.35, "max": 0.45, "kelly_fraction": 0.10},
+      {"min": 0.45, "max": 0.55, "kelly_fraction": 0.20},
+      {"min": 0.55, "max": 0.65, "kelly_fraction": 0.25},
+      {"min": 0.65, "max": 0.80, "kelly_fraction": 0.15},
+      {"min": 0.80, "max": 1.01, "kelly_fraction": 0.10}
+    ],
+    "default_kelly_fraction": 0.10
+  },
+  "kelly_sanity_checks": {
+    "description": "Hard bounds on position sizing: max 25% of portfolio per position, min 1% for any trade that passes filters.",
+    "max_position_pct": 0.25,
+    "min_position_pct": 0.01,
+    "enabled": true
+  }
+}
