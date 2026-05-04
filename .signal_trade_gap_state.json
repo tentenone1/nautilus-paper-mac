@@ -1,0 +1,13 @@
+{
+  "prev_open_count": 1339,
+  "stall_start": "2026-05-04T13:35:01.602128+00:00",
+  "last_gap_alert": 1777887301.7772868,
+  "last_stall_alert": 0,
+  "consecutive_gaps": 0,
+  "schema_version": 1,
+  "recent_signals": 41,
+  "latest_signal": "2026-05-04T13:44:55.915090+00:00",
+  "recent_trades": 7,
+  "latest_trade": "2026-05-04 13:28:13.320476+00:00",
+  "open_trade_count": 1339
+}

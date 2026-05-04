@@ -11,6 +11,7 @@ Uses Nautilus framework for execution, position tracking, and risk management.
 from __future__ import annotations
 
 import time
+import os
 import uuid
 import json
 import pandas as pd
@@ -28,6 +29,7 @@ from nautilus_trader.model.objects import Currency, Money, Price, Quantity
 from nautilus_trader.trading.strategy import Strategy
 
 from py_clob_client.client import ClobClient
+from components.resolution_poller import ResolutionPoller
 from py_clob_client.constants import POLYGON
 from nautilus_trader.adapters.polymarket.common.parsing import parse_polymarket_instrument
 
@@ -46,6 +48,49 @@ from py_clob_client.constants import POLYGON
 from nautilus_trader.adapters.polymarket.common.parsing import parse_polymarket_instrument
 
 
+# ── Module-level Constants ─────────────────────────────────────────────────────
+
+# Trade buffer thresholds
+TRADE_BUFFER_SIZE_THRESHOLD = 200  # Minimum USD to buffer a trade
+TRADE_BUFFER_FLUSH_COUNT = 5  # Number of trades to trigger buffer flush
+
+# Exit timer configuration
+EXIT_TIMER_INTERVAL_SECS = 30.0  # How often to check all positions for exits
+RECYCLE_INTERVAL_SECS = 1800.0  # Unsubscribe/resubscribe interval to flush stale order books
+
+# Position management
+RE_ENTRY_COOLDOWN_SECS = 300  # Don't re-enter same instrument within 5 minutes of exit
+LOW_CASH_ALERT_PCT = 0.20  # Warn when free balance drops below 20% of bankroll
+
+# Certainty exit thresholds for binary prediction markets
+CERTAINTY_WIN_THRESHOLD = 0.95  # Price above this = very likely to win
+CERTAINTY_LOSS_THRESHOLD = 0.05  # Price below this = very likely to lose
+
+# P&L sanity cap
+MAX_SANE_RETURN = 2.0  # Cap P&L returns at ±200% to prevent sandbox artifacts
+
+# Memory management
+MEMORY_PRESSURE_MB = 2500  # RSS threshold in MB to trigger graceful shutdown
+
+# Subscription cleanup
+STALE_SUBSCRIPTION_TTL_SECS = 3600  # Clean up dynamic subscriptions older than 1 hour
+
+# Resolution timing
+RESOLUTION_EXIT_HOURS = 6  # Exit if market resolves within this many hours
+
+# Sports market timing
+SPORTS_EXIT_HOURS_BEFORE_EVENT = 1  # Exit sports positions this many hours before game
+
+# Liquidity tier thresholds (volume + liquidity in USD)
+LIQUIDITY_TIER4_THRESHOLD = 100_000  # Illiquid: reduce to 25% of Kelly
+LIQUIDITY_TIER3_THRESHOLD = 1_000_000  # Moderate: reduce to 50% of Kelly
+
+# Liquidity sizing multipliers
+LIQUIDITY_TIER4_MULTIPLIER = 0.25
+LIQUIDITY_TIER3_MULTIPLIER = 0.50
+LIQUIDITY_TIER2_MULTIPLIER = 0.75
+
+
 class WhaleFollowerConfig(StrategyConfig, frozen=True):
     """Configuration for WhaleFollower."""
 
@@ -55,15 +100,25 @@ class WhaleFollowerConfig(StrategyConfig, frozen=True):
     stop_loss_pct: float = 0.15
     take_profit_pct: float = 0.30
     max_position_pct: float = 0.10
+    max_open_positions: int = 50
+    # Max total gross exposure as % of bankroll (hard cap on aggregate position size)
+    max_total_exposure_pct: float = 5.0  # Total open positions capped at 500% of bankroll
     min_confidence: float = 0.55
     scan_interval_secs: float = 30.0
     auto_trade: bool = True
     # Dynamic Kelly: use whale's actual win rate instead of fixed estimate
     use_dynamic_kelly: bool = True
     # Seen position TTL: re-scan positions older than this (seconds)
-    seen_position_ttl: float = 86400.0  # 24 hours
+    seen_position_ttl: float = 14400.0  # 4 hours (was 24h — 542 orphan_cleanup_sandbox trades avg'd 35h)
     # Max hold time for open positions (hours) — longer than this triggers auto-exit
-    max_hold_hours: float = 12.0  # close positions held > 12h
+    max_hold_hours: float = 4.0  # close positions held > 4h (was 24h — 6.2% WR on >1h positions)
+
+    # Asymmetrical SL/TP: TP = TP_MULTIPLIER x SL threshold (winners run longer)
+    tp_multiplier: float = 2.5  # TP width = 2.5x SL width
+
+    # Trailing stop - activates after TP threshold is reached
+    trailing_stop: bool = True
+    trailing_stop_retrace_pct: float = 0.40  # Exit if price retraces 40% from peak gain
     # Max trades per scan cycle (prevents balance exhaustion on restart)
     max_trades_per_scan: int = 5
     # Trade buffer flush interval (seconds)
@@ -93,14 +148,18 @@ class WhaleFollower(Strategy):
         self._trade_count: int = 0  # Track received trade ticks
         self._trades_this_scan: int = 0  # Track trades per scan cycle
         self._exit_timer_last: float = 0
-        self._exit_timer_interval: float = 30.0  # Check all positions every 30s
+        self._exit_timer_interval: float = EXIT_TIMER_INTERVAL_SECS
+        self._last_recycle: float = 0
+        self._recycle_interval: float = RECYCLE_INTERVAL_SECS
         self._daily_pnl: float = 0.0
         self._daily_pnl_date: str = ""
-        self._daily_loss_limit: float = 500.0  # Stop trading if daily loss exceeds this
+        self._daily_loss_limit: float = float(os.getenv("DAILY_LOSS_LIMIT", "500.0"))  # Stop trading if daily loss exceeds this (configurable via env)
+        self._daily_loss_breached: bool = False  # Permanently stops trading until next day
         self._pending_whales: dict[str, dict] = {}  # client_order_id -> {whale_name, market_title, category}
         self._last_exit_time: dict[str, float] = {}  # inst_id -> timestamp (re-entry cooldown)
         self._last_resolution_check: dict[str, float] = {}  # inst_id -> timestamp (rate-limit API calls)
         self._open_positions: dict[str, dict] = {}  # str(inst_id) -> {whale_name, market_title, category, side, entry_price, size, entry_time, trade_id, condition_id}
+        self._exited_positions: set[str] = set()  # Track exited instrument IDs to prevent duplicate exits
         self._whale_tiering: WhaleTiering | None = None
 
     def on_start(self) -> None:
@@ -126,6 +185,11 @@ class WhaleFollower(Strategy):
         # Initialize whale tiering
         self._whale_tiering = WhaleTiering()
 
+        # Initialize resolution poller for real P&L tracking
+        self._resolution_poller = ResolutionPoller()
+        self._last_resolution_poll: float = 0
+        self._resolution_poll_interval: float = 120.0  # Check resolutions every 2 minutes
+
         # Initialize insider analyzer
         self._analyzer = WhaleInsiderAnalyzer()
 
@@ -148,7 +212,7 @@ class WhaleFollower(Strategy):
         self._exit_timer_id = "exit_check"
         self.clock.set_timer(
             name=self._exit_timer_id,
-            interval=pd.Timedelta(seconds=30),
+            interval=pd.Timedelta(seconds=EXIT_TIMER_INTERVAL_SECS),
             callback=self._on_exit_timer,
         )
         self.log.info("Exit timer registered: every 30s (independent of quote ticks)")
@@ -235,14 +299,17 @@ class WhaleFollower(Strategy):
     def _categorize_instrument(inst_id: str) -> str:
         """Fallback categorizer from instrument ID when signal lacks market_title."""
         if not inst_id:
-            return "Unknown"
+            return "general"
         parts = inst_id.split("-")
         if len(parts) > 1:
             raw = parts[1].replace(".POLYMARKET", "").replace("_", " ").replace("-", " ")
+            # Skip numeric-only strings (condition IDs) — not categorizable
+            if raw and raw[0].isdigit() and raw.replace(".", "").replace("_", "").isalnum():
+                return "general"
             from strategies.whale_tracker_new import _categorize_market
             result = _categorize_market(raw)
-            return result if result else "general"
-        return "Unknown"
+            return result if result != "general" or raw else "general"
+        return "general"
 
     def on_quote_tick(self, tick: QuoteTick) -> None:
         bid = tick.bid_price.as_double()
@@ -271,16 +338,16 @@ class WhaleFollower(Strategy):
         usd = size * price
         self._trade_count += 1
         
-        # Buffer trades >= $200 (lowered from $1000 for better responsiveness)
-        if usd >= 200:  # Lowered threshold for small markets
+        # Buffer trades >= TRADE_BUFFER_SIZE_THRESHOLD (lowered from $1000 for better responsiveness)
+        if usd >= TRADE_BUFFER_SIZE_THRESHOLD:
             self._trade_buffer.append({
                 "size": size,
                 "price": price,
                 "side": tick.aggressor_side.name,
                 "timestamp": time.time(),
             })
-            # Process buffer every 5 trades (was 10)
-            if len(self._trade_buffer) >= 5:
+            # Process buffer every TRADE_BUFFER_FLUSH_COUNT trades (was 10)
+            if len(self._trade_buffer) >= TRADE_BUFFER_FLUSH_COUNT:
                 self._process_trade_buffer()
         
         # Timer-based flush: process buffer every N seconds even if not full
@@ -296,6 +363,7 @@ class WhaleFollower(Strategy):
 
     def on_order_filled(self, event) -> None:
         """Log filled orders to the trades database."""
+        conn = None
         try:
             import sqlite3
             from pathlib import Path
@@ -348,13 +416,21 @@ class WhaleFollower(Strategy):
                 inst_key = str(event.instrument_id)
                 recovered = self._open_positions.get(inst_key, {})
                 if recovered:
+                    raw_name = recovered.get("whale_name", "unknown")
+                    if not raw_name or raw_name.lower() in ("", "unknown", "unknown whale"):
+                        import logging as _lg
+                        inst_label = str(event.instrument_id)[:30]
+                        _lg.getLogger("whale_follower").warning(
+                            f"Recovery: empty whale_name for {inst_label}..., "
+                            f"marking as 'unknown'"
+                        )
                     pending = {
-                        "whale_name": recovered.get("whale_name", "unknown"),
+                        "whale_name": raw_name,
                         "market_title": recovered.get("market_title", ""),
                         "category": recovered.get("category", ""),
                         "whale_address": "",
-                        "edge_score": 0.0,
-                        "confidence": 0.0,
+                        "edge_score": recovered.get("edge_score", 0.0),
+                        "confidence": recovered.get("confidence", 0.0),
                         "entry_reason": "recovered_after_restart",
                         "kelly_fraction": self.config.kelly_fraction,
                         "entry_price": recovered.get("entry_price", 0.5),
@@ -377,7 +453,25 @@ class WhaleFollower(Strategy):
             size_usd = qty * entry_price
 
             # Use pending already populated above
-            whale_name = pending.get("whale_name", "unknown")
+            whale_name_raw = pending.get("whale_name", "unknown")
+            if not whale_name_raw or whale_name_raw.lower() in ("", "unknown", "unknown whale"):
+                import logging as _lg
+                wallet = pending.get("whale_address", "")
+                if wallet:
+                    fallback = f"whale_0x{wallet[:6].lower()}"
+                    _lg.getLogger("whale_follower").warning(
+                        f"Fallback naming: {whale_name_raw!r} -> {fallback} "
+                        f"(wallet={wallet[:10]}...)"
+                    )
+                    whale_name = fallback
+                else:
+                    _lg.getLogger("whale_follower").warning(
+                        f"Empty whale_name with no wallet address for "
+                        f"{pending.get('market_title', '?')[:40]}"
+                    )
+                    whale_name = "unknown"
+            else:
+                whale_name = whale_name_raw
             market_title = pending.get("market_title", "")
             category = pending.get("category", "") or self._categorize_instrument(inst_id)
             whale_address = pending.get("whale_address", "")
@@ -389,33 +483,60 @@ class WhaleFollower(Strategy):
             # Fallback: extract market title from instrument ID if not from signal
             if not market_title:
                 parts = inst_id.split('-')
-                market_title = parts[1][:80] if len(parts) > 1 else inst_id[:80]
+                raw_title = parts[1] if len(parts) > 1 else inst_id
+                # Don't store numeric condition IDs as titles
+                if raw_title and raw_title[0].isdigit():
+                    market_title = ""  # leave empty rather than storing numeric ID
+                else:
+                    market_title = raw_title[:80]
+
+            # Final category fallback — never leave as Unknown or empty
+            if not category or category == "Unknown":
+                category = "general"
 
             import uuid
             trade_id = str(uuid.uuid4())
-            conn.execute("""
-                INSERT OR IGNORE INTO trades (trade_id, timestamp, whale_name, whale_address, market_title, side, entry_price, position_size_usd, category, signal_source, edge_score, confidence, kelly_fraction, entry_reason, instrument_id, condition_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                trade_id,
-                str(datetime.now(timezone.utc)),
-                whale_name,
-                whale_address,
-                market_title,
-                event.order_side.name if hasattr(event, 'order_side') else 'BUY',
-                entry_price,
-                size_usd,
-                category,
-                pending.get("signal_source", "whale_tracker"),
-                edge_score,
-                confidence,
-                kelly_fraction,
-                entry_reason,
-                inst_id,
-                inst_id.split("-")[0] if "-" in inst_id else inst_id,
-            ))
-            conn.commit()
+            
+            # ── DB TRANSACTION SAFETY: Explicit BEGIN/COMMIT with rollback on failure ──
+            try:
+                conn.execute("BEGIN TRANSACTION")
+                conn.execute("""
+                    INSERT OR IGNORE INTO trades (trade_id, timestamp, whale_name, whale_address, market_title, side, entry_price, position_size_usd, category, signal_source, edge_score, confidence, kelly_fraction, entry_reason, instrument_id, condition_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    trade_id,
+                    str(datetime.now(timezone.utc)),
+                    whale_name,
+                    whale_address,
+                    market_title,
+                    event.order_side.name if hasattr(event, 'order_side') else 'BUY',
+                    entry_price,
+                    size_usd,
+                    category,
+                    pending.get("signal_source", "whale_tracker"),
+                    edge_score,
+                    confidence,
+                    kelly_fraction,
+                    entry_reason,
+                    inst_id,
+                    inst_id.split("-")[0] if "-" in inst_id else inst_id,
+                ))
+                conn.execute("COMMIT")
+            except Exception as db_error:
+                if conn:
+                    try:
+                        conn.execute("ROLLBACK")
+                    except Exception:
+                        pass
+                self.log.error(
+                    f"[DB] Transaction failed, rolled back: {db_error} | "
+                    f"trade_id={trade_id} | whale={whale_name} | market={market_title[:40]} | "
+                    f"size=${size_usd:.0f} | entry={entry_price:.4f}"
+                )
+                return
+            
             conn.close()
+            conn = None
             
             self.log.info(f"[DB] Logged trade: {whale_name} | {category} | {market_title[:40]} | ${size_usd:.0f}")
             
@@ -433,13 +554,21 @@ class WhaleFollower(Strategy):
                 "condition_id": cond_id,
                 "venue_position_id": str(getattr(event, 'venue_position_id', '')),
                 "edge_score": edge_score,
+                "confidence": confidence,
+                "kelly_fraction": kelly_fraction,
             }
         except Exception as e:
             self.log.error(f"[DB] Failed to log trade: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _scan_whale_positions(self) -> None:
         """Poll known whale positions with rate limiting."""
-        if not self._tracker or not self.config.auto_trade:
+        if not self._tracker or not self.config.auto_trade or self._daily_loss_breached:
             return
         
         # Reset per-scan trade counter
@@ -563,6 +692,18 @@ class WhaleFollower(Strategy):
             )
             return
 
+        # REJECT: unknown whale signals with zero edge score (noise trades)
+        # Historical data shows 518 such trades lost -$2,532 total.
+        if edge_val == 0.0 and (not signal.whale_name or signal.whale_name.lower() in ("unknown", "unknown whale", "")):
+            wallet = getattr(signal, 'whale_address', '') or ''
+            wallet_info = f" wallet={wallet[:10]}..." if wallet else ""
+            self.log.info(
+                f"REJECT unknown whale zero edge: {signal.whale_name}{wallet_info} | "
+                f"market={getattr(signal, "market_title", "")[:40]} | "
+                f"conf={signal.confidence:.0%}"
+            )
+            return
+
         # Apply tier-based position sizing
         if self._whale_tiering:
             tier_kelly = self._whale_tiering.apply_overrides(
@@ -578,7 +719,7 @@ class WhaleFollower(Strategy):
             color=LogColor.YELLOW if signal.source == SignalSource.KNOWN_WHALE else LogColor.CYAN,
         )
 
-        if not self.config.auto_trade:
+        if not self.config.auto_trade or self._daily_loss_breached:
             return
 
         # Dynamic subscription: every signal is processed regardless of pre-subscribed markets.
@@ -658,6 +799,19 @@ class WhaleFollower(Strategy):
             self.log.error(f"Failed to register instrument for {condition_id[:20]}...: {e}")
             return None
 
+    def _current_gross_exposure(self) -> float:
+        """Calculate total notional exposure of all open positions as max loss amount."""
+        total = 0.0
+        for inst_id in self.config.instrument_ids:
+            positions = self.cache.positions_open(instrument_id=inst_id)
+            if positions:
+                for pos in positions:
+                    # For BinaryOption instruments: max loss = cost basis = quantity * entry_price
+                    qty = pos.quantity.as_double() if hasattr(pos.quantity, 'as_double') else float(pos.quantity)
+                    avg_open = pos.avg_px_open.as_double() if hasattr(pos.avg_px_open, 'as_double') else 0.0
+                    total += qty * avg_open
+        return total
+
     def enter_position(
         self, side: OrderSide, price: float, whale_amount: float = 0,
         instrument_id: InstrumentId = None, whale_win_rate: float | None = None,
@@ -692,8 +846,8 @@ class WhaleFollower(Strategy):
 
         # Re-entry cooldown — don't re-enter same instrument within 5 minutes of exit
         last_exit = self._last_exit_time.get(str(inst_id), 0)
-        if time.time() - last_exit < 300:
-            self.log.info(f"Re-entry cooldown for {inst_id}: {time.time() - last_exit:.0f}s < 300s, skipping")
+        if time.time() - last_exit < RE_ENTRY_COOLDOWN_SECS:
+            self.log.info(f"Re-entry cooldown for {inst_id}: {time.time() - last_exit:.0f}s < {RE_ENTRY_COOLDOWN_SECS}s, skipping")
             return
 
         # Hard balance guard — check available USDC.e funds before sizing
@@ -726,22 +880,38 @@ class WhaleFollower(Strategy):
             )
             return
 
+        # Gross exposure cap check: total open position cost must not exceed max % of bankroll
+        current_exposure = self._current_gross_exposure()
+        exposure_max = self.config.bankroll * self.config.max_total_exposure_pct
+        if current_exposure + size_usd > exposure_max:
+            self.log.info(
+                f"Exposure cap: ${current_exposure:,.0f} + ${size_usd:,.0f} > "
+                f"${exposure_max:,.0f} (${self.config.bankroll:,.0f} x {self.config.max_total_exposure_pct:.0%}), skipping"
+            )
+            return
+        # Warning when exposure exceeds 80% of cap
+        if current_exposure > exposure_max * 0.8:
+            self.log.warning(
+                f"High exposure warning: ${current_exposure:,.0f} / ${exposure_max:,.0f} "
+                f"({current_exposure/exposure_max:.0%} of cap)"
+            )
+
         # Max open positions check
         open_count = sum(
             1 for inst_id in self.config.instrument_ids
             if self.cache.positions_open(instrument_id=inst_id)
             and self.cache.positions_open(instrument_id=inst_id)[0].quantity.as_double() != 0
         )
-        max_positions = getattr(self.config, "max_open_positions", 15)
+        max_positions = self.config.max_open_positions
         if open_count >= max_positions:
             self.log.info(
                 f"Max positions reached ({open_count}/{max_positions}), skipping"
             )
             return
         # Low‑cash alert: warn if free balance drops below 20 % of bankroll
-        if available < 0.2 * self.config.bankroll:
+        if available < LOW_CASH_ALERT_PCT * self.config.bankroll:
             self.log.warning(
-                f"Low cash alert: free USDC.e ${available:,.2f} < 20% of bankroll (${self.config.bankroll:,.2f})"
+                f"Low cash alert: free USDC.e ${available:,.2f} < {LOW_CASH_ALERT_PCT:.0%} of bankroll (${self.config.bankroll:,.2f})"
             )
 
         qty = instrument.make_qty(Decimal(str(size_usd / price)), round_down=True)
@@ -756,6 +926,14 @@ class WhaleFollower(Strategy):
         )
 
         # Store whale metadata keyed by the unique client_order_id for later lookup
+        if whale_name:
+            pass
+        else:
+            import logging as _lg
+            _lg.getLogger("whale_follower").warning(
+                f"enter_position called with empty whale_name for {market_title[:40]} "
+                f"(inst={inst_id[:50]}...) - trade will be stored as 'unknown'"
+            )
         if whale_name:
             self._pending_whales[str(order.client_order_id)] = {
                 "whale_name": whale_name,
@@ -779,49 +957,77 @@ class WhaleFollower(Strategy):
         self.submit_order(order)
         self._trades_this_scan += 1
 
-    def _simulate_exit_price(self, pos_info: dict, duration_seconds: float = 300) -> float:
-        """Simulate exit price calibrated to edge_score for sandbox P&L tracking.
-
-        Uses a duration-based multi-step random walk.  High edge_score → strong
-        directional bias toward predicted outcome, low noise.  Low edge_score →
-        weak/no directional bias, higher volatility (more random walk).
-
-        BUY (long YES) positions are biased toward $1.00 (resolution for YES).
-        SELL (short/NO) positions are biased toward $0.00 (resolution for NO).
+    def _fetch_real_midpoint(self, inst_key: str) -> float | None:
+        """Fetch the real market midpoint price from Polymarket CLOB API.
+        Returns the midpoint price or None if API fails.
         """
-        from random import gauss
+        try:
+            import urllib.request, json
+            parts = inst_key.replace(".POLYMARKET", "").split("-")
+            if len(parts) >= 2:
+                token_id = parts[-1]
+                url = f"https://clob.polymarket.com/midpoint?token_id={token_id}"
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read().decode())
+                price_str = data.get("midpoint") or data.get("price")
+                if price_str is not None:
+                    return float(price_str)
+        except Exception:
+            pass
+        return None
 
+    def _resolve_exit_price(self, pos_info: dict) -> float:
+        """Determine exit price using REAL market data (no random walk).
+
+        Priority:
+        1. Market resolved -> resolution price ($1.00 if won, $0.00 if lost)
+        2. CLOB API midpoint -> actual trading price
+        3. Fallback: deterministic estimate (edge-based drift, no Gaussian noise)
+        """
         entry = pos_info.get("entry_price", 0.5)
-        cat = pos_info.get("category", "Unknown").lower()
-        edge = pos_info.get("edge_score", 0.0) or 0.0
+        inst_key = pos_info.get("inst_key", "")
         side = pos_info.get("side", "BUY")
 
-        # Base volatility by category
-        volatility = {
-            "sports": 0.10,
-            "general": 0.20,
-            "technology": 0.20,
-            "geopolitics": 0.30,
-            "unknown": 0.15,
-        }
-        base_sigma = volatility.get(cat, 0.15)
+        # 1. Check if market is resolved
+        condition_id = pos_info.get("condition_id", "")
+        if condition_id:
+            try:
+                from components.resolution_poller import get_market_resolution, calculate_actual_pnl
+                market = get_market_resolution(condition_id)
+                if market and market.get("resolved"):
+                    winning_token_id = market.get("winning_token_id", "")
+                    our_token_id = ""
+                    if inst_key and "-" in inst_key:
+                        our_token_id = inst_key.replace(".POLYMARKET", "").split("-")[-1]
+                    if our_token_id and winning_token_id:
+                        size = pos_info.get("size", 100.0)
+                        pnl_info = calculate_actual_pnl(
+                            entry_price=entry,
+                            position_size_usd=size,
+                            our_token_id=our_token_id,
+                            winning_token_id=winning_token_id,
+                            side=side,
+                        )
+                        if pnl_info.get("won"):
+                            return 1.00
+                        else:
+                            return 0.00
+            except Exception:
+                pass
 
+        # 2. Try real midpoint from CLOB API
+        if inst_key:
+            mid = self._fetch_real_midpoint(inst_key)
+            if mid is not None and 0.01 <= mid <= 0.99:
+                return mid
+
+        # 3. Fallback: deterministic estimate (NO random walk)
+        edge = pos_info.get("edge_score", 0.0) or 0.0
         target = 1.0 if side.upper() in ("BUY", "LONG") else 0.0
-
-        # Duration-based step parameters
-        num_steps = max(1, int(duration_seconds / 60))
-        time_factor = min(1.0, duration_seconds / 3600.0)
-        total_drift = edge * time_factor * (target - entry)
-        per_step_drift = total_drift / num_steps
-        per_step_sigma = base_sigma * (1.0 - edge * 0.8) / (num_steps ** 0.5)
-        per_step_sigma = max(0.01, per_step_sigma)
-
-        price = entry
-        for _ in range(num_steps):
-            price += gauss(per_step_drift, per_step_sigma)
-            price = max(0.01, min(0.99, price))
-
-        return price
+        drift = edge * (target - entry) * 0.30
+        price = entry + drift
+        return max(0.01, min(0.99, price))
 
     def exit_position(self, instrument_id: InstrumentId = None, exit_reason: str = "manual") -> None:
         """Close current position with P&L tracking and DB update."""
@@ -831,6 +1037,12 @@ class WhaleFollower(Strategy):
         
         inst_id = instrument_id or self.config.instrument_id
         inst_key = str(inst_id)
+        
+        # ── POSITION CACHE DEDUP: Skip if already exited this position ──
+        if inst_key in self._exited_positions:
+            self.log.debug(f"Position already exited, skipping: {inst_key[:50]}...")
+            return
+        
         open_positions = self.cache.positions_open(instrument_id=inst_id)
         if not open_positions or open_positions[0].quantity.as_double() == 0:
             return
@@ -839,12 +1051,13 @@ class WhaleFollower(Strategy):
         
         # Look up position info from our registry
         pos_info = self._open_positions.pop(inst_key, {})
+        pos_info["inst_key"] = inst_key
         
         # Simulate exit price
         entry_price = pos_info.get("entry_price", 0.50)
         entry_time = pos_info.get("entry_time", time.time())
         duration = time.time() - entry_time
-        exit_price = self._simulate_exit_price(pos_info, duration_seconds=duration)
+        exit_price = self._resolve_exit_price(pos_info)
         
         # Calculate P&L
         side = pos_info.get("side", "BUY")
@@ -853,6 +1066,21 @@ class WhaleFollower(Strategy):
         else:
             realized_pnl = qty * (entry_price - exit_price)  # SELL = short
         realized_return = (exit_price - entry_price) / entry_price if side == "BUY" else (entry_price - exit_price) / entry_price
+        
+        # Sanity cap: P&L return exceeding ±200% is almost certainly a sandbox pricing artifact
+        # (e.g., entry fills at $0.005 on a $0.50 market → 5,000%+ returns)
+        # Cap at ±200% and log warning so dashboard metrics stay realistic
+        if abs(realized_return) > MAX_SANE_RETURN:
+            self.log.warning(
+                f"[SANITY CAP] {inst_key[:50]}... return={realized_return:+.2%} exceeds ±{MAX_SANE_RETURN:.0%} — "
+                f"capping from ${realized_pnl:+.2f} to capped value. "
+                f"entry=${entry_price:.4f} exit=${exit_price:.4f} qty={qty:.0f} side={side}"
+            )
+            # Scale P&L to return ±200% while preserving direction
+            # For both BUY and SELL: capped_pnl = qty * entry * MAX_SANE_RETURN (directional)
+            realized_pnl = qty * entry_price * MAX_SANE_RETURN * (1 if realized_pnl >= 0 else -1)
+            realized_return = MAX_SANE_RETURN if realized_pnl >= 0 else -MAX_SANE_RETURN
+            self.log.info(f"[SANITY CAP] Capped P&L: ${realized_pnl:+.2f} ({realized_return:+.2%})")
         
         # Update DB row with exit details
         trade_id = pos_info.get("trade_id", "")
@@ -878,6 +1106,9 @@ class WhaleFollower(Strategy):
         # Nautilus close
         self.close_position(pos)
         self._last_exit_time[inst_key] = time.time()
+        
+        # ── POSITION CACHE DEDUP: Mark as exited ──
+        self._exited_positions.add(inst_key)
         
         # Update daily P&L
         self._daily_pnl += realized_pnl
@@ -969,119 +1200,114 @@ class WhaleFollower(Strategy):
             try:
                 inst_id = InstrumentId.from_str(inst_key)
                 self.exit_position(inst_id, exit_reason="max_hold")
-            except Exception:
-                pass  # stale entry, clean up
-            if inst_key in self._open_positions:
-                del self._open_positions[inst_key]  # safety cleanup
+            except Exception as e:
+                self.log.error(f"Error exiting expired position {inst_key[:50]}...: {e}")
+                # Clean up stale entry even on error
+                if inst_key in self._open_positions:
+                    del self._open_positions[inst_key]
         
         # Phase 2: Check ALL open positions for stop-loss, take-profit, resolution exits
         # FIX: iterate self._open_positions (includes dynamic instruments) instead of
         # self.config.instrument_ids (pre-subscribed only). Dynamic instruments without
-        # quote ticks use _simulate_exit_price as fallback current price.
+        # quote ticks use _resolve_exit_price as fallback current price.
         for inst_key in list(self._open_positions.keys()):
+            # ── ERROR ISOLATION: Wrap each position in try/except ──
             try:
-                inst_id = InstrumentId.from_str(inst_key)
-            except Exception:
-                continue
-
-            open_positions = self.cache.positions_open(instrument_id=inst_id)
-            if not open_positions or open_positions[0].quantity.as_double() == 0:
-                continue
-
-            pos = open_positions[0]
-            # avg_px_open can be a Price object OR a raw float depending on Nautilus version
-            raw_entry = pos.avg_px_open
-            entry = raw_entry.as_double() if hasattr(raw_entry, 'as_double') else float(raw_entry)
-            if entry <= 0:
-                continue
-
-            # ── Sports market handling ──
-            is_sports, sport_type = self._is_sports_market(inst_id)
-            if is_sports:
-                # Check if we should exit before game time
-                if self._should_exit_for_sports(inst_id):
-                    self.exit_position(inst_id, exit_reason="sports_event_start")
+                try:
+                    inst_id = InstrumentId.from_str(inst_key)
+                except Exception as parse_err:
+                    self.log.error(f"Failed to parse instrument ID '{inst_key[:50]}...': {parse_err}")
                     continue
+
+                open_positions = self.cache.positions_open(instrument_id=inst_id)
+                if not open_positions or open_positions[0].quantity.as_double() == 0:
+                    continue
+
+                pos = open_positions[0]
+                # avg_px_open can be a Price object OR a raw float depending on Nautilus version
+                raw_entry = pos.avg_px_open
+                entry = raw_entry.as_double() if hasattr(raw_entry, 'as_double') else float(raw_entry)
+                if entry <= 0:
+                    continue
+
+                # Get position info
+                pos_info = self._open_positions.get(inst_key, {})
                 
-                # Get event timing to check if in-play
-                timing = self._get_market_event_time(inst_id)
-                if timing["is_in_play"]:
-                    # Market is in-play — prices are frozen, skip stop-loss/take-profit
-                    # (would trigger on stale data)
-                    continue
-
-            # Get position info (includes edge_score for threshold calibration)
-            pos_info = self._open_positions.get(inst_key, {})
-            
-            # Get current price from cache (last quote)
-            quote = self.cache.quote_tick(inst_id)
-            if quote is None:
-                # Dynamic instrument without quote subscription — use simulated price
-                if pos_info:
-                    mid = self._simulate_exit_price(pos_info)
-                    self.log.info(f"SIMULATED PRICE for {inst_id}:  (no quote ticks)")
+                # Get current price from cache (last quote)
+                quote = self.cache.quote_tick(inst_id)
+                if quote is None:
+                    # Dynamic instrument without quote subscription — use simulated price
+                    if pos_info:
+                        mid = self._resolve_exit_price(pos_info)
+                        self.log.info(f"SIMULATED PRICE for {inst_id}:  (no quote ticks)")
+                    else:
+                        continue
                 else:
+                    mid = (quote.bid_price.as_double() + quote.ask_price.as_double()) / 2
+
+                # ── Resolution-aware exit for binary prediction markets ──
+                # Price-based SL/TP on binary outcome markets captures mid-point
+                # opinion, not resolution truth. This caused the $54K P&L divergence:
+                #   - TP exits showed +$34,737 sim but -$2,090 actual
+                #   - SL exits showed +$7,056 sim but -$11,431 actual
+                # Instead, we hold to resolution and only exit on:
+                #   1. Certainty: price > 0.95 (very likely to win) or < 0.05 (very likely to lose)
+                #   2. Whale abandonment of the same market (future enhancement)
+                #   3. ResolutionPoller handles final exit when market resolves
+                # Note: edge-score calibration is preserved for position sizing (kelly.py),
+                #       not for exit triggers.
+                position_edge = pos_info.get("edge_score", 0.0) or 0.0
+
+                # Get position side from stored info (default BUY for safety)
+                side = pos_info.get("side", "BUY")
+
+                # Certainty exit: if price strongly indicates the outcome
+                if side == "BUY":
+                    is_certain_win = mid > CERTAINTY_WIN_THRESHOLD
+                    is_certain_loss = mid < CERTAINTY_LOSS_THRESHOLD
+                else:
+                    is_certain_win = mid < CERTAINTY_LOSS_THRESHOLD
+                    is_certain_loss = mid > CERTAINTY_WIN_THRESHOLD
+
+                if is_certain_win:
+                    self.log.info(
+                        f"CERTAINTY EXIT (WIN) {inst_id}: mid={mid:.4f}, "
+                        f"entry={entry:.4f}, edge={position_edge:.2f}, "
+                        f"condition_id={pos_info.get('condition_id', '?')[:20]}..."
+                    )
+                    self.exit_position(inst_id, exit_reason="certainty_win")
                     continue
-            else:
-                mid = (quote.bid_price.as_double() + quote.ask_price.as_double()) / 2
+                elif is_certain_loss:
+                    self.log.info(
+                        f"CERTAINTY EXIT (LOSS) {inst_id}: mid={mid:.4f}, "
+                        f"entry={entry:.4f}, edge={position_edge:.2f}, "
+                        f"condition_id={pos_info.get('condition_id', '?')[:20]}..."
+                    )
+                    self.exit_position(inst_id, exit_reason="certainty_loss")
+                    continue
+                else:
+                    # Log the current state for transparency, but DO NOT exit on mid-price moves
+                    self.log.info(
+                        f"HOLDING {inst_id}: entry={entry:.4f}, mid={mid:.4f}, "
+                        f"edge={position_edge:.2f} — holding to resolution"
+                    )
+                    continue
 
-            # ── Edge-score-calibrated SL/TP thresholds ──
-            # Higher edge → tighter, symmetrical thresholds (confident → quick exit)
-            # Lower edge → wider TP (needs room to develop)
-            position_edge = pos_info.get("edge_score", 0.0) or 0.0
-            if position_edge >= 0.90:
-                sl_threshold = 0.08   # 8% SL
-                tp_threshold = 0.08   # 8% TP (symmetrical!)
-            elif position_edge >= 0.80:
-                sl_threshold = 0.10   # 10% SL
-                tp_threshold = 0.10   # 10% TP
-            elif position_edge >= 0.70:
-                sl_threshold = 0.12   # 12% SL
-                tp_threshold = 0.12   # 12% TP
-            elif position_edge >= 0.60:
-                sl_threshold = 0.15   # 15% SL
-                tp_threshold = 0.15   # 15% TP
-            else:
-                sl_threshold = 0.15   # 15% SL (fallback)
-                tp_threshold = 0.15   # 15% TP (fallback, symmetrical)
-            
-            # Clamp for price extremes:
-            # Near $0.99 → TP has almost no room, tighten SL to compensate
-            # Near $0.01 → SL has almost no room, relax TP
-            if entry > 0.90:
-                sl_threshold = min(sl_threshold, 0.05)
-                tp_threshold = max(tp_threshold, 0.05)
-            elif entry < 0.10:
-                sl_threshold = max(sl_threshold, 0.05)
-                tp_threshold = min(tp_threshold, 0.15)
-
-            # Stop loss check
-            loss_pct = (entry - mid) / entry if pos.side.name == "LONG" else (mid - entry) / entry
-            if loss_pct >= sl_threshold:
-                self.log.warning(
-                    f"STOP LOSS {inst_id}: -{loss_pct:.1%} (entry={entry:.4f}, now={mid:.4f}, "
-                    f"sl_threshold={sl_threshold:.0%}, edge={position_edge:.2f})"
+                # Resolution exit check — exit if market resolves within 6 hours
+                if self._should_exit_for_resolution(inst_id):
+                    self.log.info(f"RESOLUTION EXIT {inst_id}: market resolving soon")
+                    self.exit_position(inst_id, exit_reason="resolution")
+            except Exception as pos_error:
+                # Log error and continue to next position (error isolation)
+                self.log.error(
+                    f"Error checking position {inst_key[:50]}...: {pos_error} | "
+                    f"entry={pos_info.get('entry_price', '?') if 'pos_info' in dir() else '?'} | "
+                    f"continuing to next position"
                 )
-                self.exit_position(inst_id, exit_reason="stop_loss")
                 continue
-
-            # Take profit check
-            profit_pct = (mid - entry) / entry if pos.side.name == "LONG" else (entry - mid) / entry
-            if profit_pct >= tp_threshold:
-                self.log.info(
-                    f"TAKE PROFIT {inst_id}: +{profit_pct:.1%} (entry={entry:.4f}, now={mid:.4f}, "
-                    f"tp_threshold={tp_threshold:.0%}, edge={position_edge:.2f})"
-                )
-                self.exit_position(inst_id, exit_reason="take_profit")
-                continue
-
-            # Resolution exit check — exit if market resolves within 6 hours
-            if self._should_exit_for_resolution(inst_id):
-                self.log.info(f"RESOLUTION EXIT {inst_id}: market resolving soon")
-                self.exit_position(inst_id, exit_reason="resolution")
 
     def _should_exit_for_resolution(self, instrument_id: InstrumentId) -> bool:
-        """Check if the market for this instrument resolves within 6 hours."""
+        """Check if the market for this instrument resolves within RESOLUTION_EXIT_HOURS hours."""
         try:
             # Extract condition ID from instrument
             cond_id = str(instrument_id).split("-")[0]
@@ -1097,7 +1323,7 @@ class WhaleFollower(Strategy):
                 if end_date:
                     end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
                     hours_left = (end_dt - datetime.now(timezone.utc)).total_seconds() / 3600
-                    if 0 < hours_left < 6:
+                    if 0 < hours_left < RESOLUTION_EXIT_HOURS:
                         return True
                     # Exit if market has already ended (hours_left <= 0 = resolved/expired)
                     if hours_left <= 0:
@@ -1118,17 +1344,19 @@ class WhaleFollower(Strategy):
             # New day, reset
             self._daily_pnl = 0.0
             self._daily_pnl_date = today
+            self._daily_loss_breached = False  # Reset breach flag for new day
             return
+
+        if self._daily_loss_breached:
+            return  # Already breached — no need to re-log every 30s
 
         if self._daily_pnl <= -self._daily_loss_limit:
             self.log.error(
                 f"DAILY LOSS LIMIT BREACHED: ${self._daily_pnl:,.2f} / -${self._daily_loss_limit:,.2f}. "
                 f"Closing all positions and stopping auto-trade."
             )
+            self._daily_loss_breached = True
             self.exit_all_positions()
-            # Disable auto-trade to prevent new entries
-            # Note: can't modify frozen config, but we can log and stop scanning
-            self._trades_this_scan = self.config.max_trades_per_scan  # Block further trades
 
     def _on_exit_timer(self, timer_name: str = None) -> None:
         """Timer callback — fires every 30s independently of quote ticks.
@@ -1152,9 +1380,70 @@ class WhaleFollower(Strategy):
             self._scan_whale_positions()
             self._last_scan = now
         
+        # Memory pressure check - graceful restart before OOM
+        try:
+            with open("/proc/self/status") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        rss_kb = int(line.split()[1])
+                        rss_mb = rss_kb / 1024
+                        if rss_mb > MEMORY_PRESSURE_MB:
+                            self.log.warning(f"MEMORY PRESSURE: {rss_mb:.0f}MB RSS - initiating graceful shutdown")
+                            self.stop()
+                        break
+        except Exception:
+            pass
+        
+        # Resolution polling — check if tracked open positions' markets have resolved
+        # Updates trades.db with actual P&L when markets resolve
+        if now - self._last_resolution_poll >= self._resolution_poll_interval:
+            try:
+                events = self._resolution_poller.poll_open_positions(self._open_positions)
+                if events:
+                    for ev in events:
+                        self.log.info(
+                            f"[RESOLUTION] {ev.get('question', '')[:50]} | "
+                            f"Winner: {ev.get('winning_outcome', '?')} | "
+                            f"Actual P&L: ${ev.get('total_actual_pnl', 0):+.2f} "
+                            f"({ev.get('trades_count', 0)} trades)"
+                        )
+                        # If position resolved and we're still holding, exit at resolution price
+                        for trade in ev.get("trades", []):
+                            inst_key = trade.get("inst_key", "")
+                            if inst_key and inst_key in self._open_positions:
+                                try:
+                                    inst_id = InstrumentId.from_str(inst_key)
+                                    self.exit_position(inst_id, exit_reason="market_resolved")
+                                    self.log.info(
+                                        f"[RESOLUTION] Exited resolved position: {inst_key[:50]}..."
+                                    )
+                                except Exception as e:
+                                    self.log.error(
+                                        f"[RESOLUTION] Failed to exit resolved position: {e}"
+                                    )
+            except Exception as e:
+                self.log.error(f"Resolution poll error: {e}")
+            self._last_resolution_poll = now
+
+        # Instrument recycle: unsubscribe/resubscribe every 30min to flush stale order books
+        # This prevents the memory leak from unbounded order book cache growth in the framework
+        if now - self._last_recycle >= self._recycle_interval:
+            recycle_count = len(self.config.instrument_ids)
+            self.log.info(f"RECYCLE: Unsubscribing {recycle_count} instruments to flush order book cache")
+            for inst_id in self.config.instrument_ids:
+                self.unsubscribe_quote_ticks(inst_id)
+                self.unsubscribe_trade_ticks(inst_id)
+                self.unsubscribe_order_fills(inst_id)
+            for inst_id in self.config.instrument_ids:
+                self.subscribe_quote_ticks(inst_id)
+                self.subscribe_trade_ticks(inst_id)
+                self.subscribe_order_fills(inst_id)
+            self._last_recycle = now
+            self.log.info(f"RECYCLE: Resubscribed {recycle_count} instruments - order book cache flushed")
+        
         # Cleanup stale subscriptions older than 1 hour
         if self._dynamic_subscriptions:
-            one_hour_ago = now - 3600
+            one_hour_ago = now - STALE_SUBSCRIPTION_TTL_SECS
             stale_keys = [k for k, t in self._dynamic_subscriptions.items() if t < one_hour_ago]
             for key in stale_keys:
                 del self._dynamic_subscriptions[key]
@@ -1268,8 +1557,8 @@ class WhaleFollower(Strategy):
         
         timing = self._get_market_event_time(instrument_id)
         
-        # Exit if game is within 1 hour (prices will freeze during play)
-        if timing["hours_until_event"] is not None and 0 < timing["hours_until_event"] < 1:
+        # Exit if game is within SPORTS_EXIT_HOURS_BEFORE_EVENT hour (prices will freeze during play)
+        if timing["hours_until_event"] is not None and 0 < timing["hours_until_event"] < SPORTS_EXIT_HOURS_BEFORE_EVENT:
             self.log.info(
                 f"Sports exit: {sport_type} market resolving in {timing['hours_until_event']:.1f}h"
             )
@@ -1290,19 +1579,19 @@ class WhaleFollower(Strategy):
         liquidity = timing.get("liquidity", 0)
         
         # Liquidity-based sizing adjustments
-        if liq_tier == "tier4" or (volume + liquidity) < 100_000:
+        if liq_tier == "tier4" or (volume + liquidity) < LIQUIDITY_TIER4_THRESHOLD:
             # Illiquid: reduce to 25% of Kelly size
-            adjusted = size_usd * 0.25
+            adjusted = size_usd * LIQUIDITY_TIER4_MULTIPLIER
             self.log.info(f"Liquidity adjustment (tier4): ${size_usd:,.0f} → ${adjusted:,.0f}")
             return adjusted
-        elif liq_tier == "tier3" or (volume + liquidity) < 1_000_000:
+        elif liq_tier == "tier3" or (volume + liquidity) < LIQUIDITY_TIER3_THRESHOLD:
             # Moderate: reduce to 50% of Kelly size
-            adjusted = size_usd * 0.50
+            adjusted = size_usd * LIQUIDITY_TIER3_MULTIPLIER
             self.log.info(f"Liquidity adjustment (tier3): ${size_usd:,.0f} → ${adjusted:,.0f}")
             return adjusted
         elif liq_tier == "tier2":
             # Good: reduce to 75% of Kelly size
-            adjusted = size_usd * 0.75
+            adjusted = size_usd * LIQUIDITY_TIER2_MULTIPLIER
             self.log.info(f"Liquidity adjustment (tier2): ${size_usd:,.0f} → ${adjusted:,.0f}")
             return adjusted
         

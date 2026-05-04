@@ -15,7 +15,9 @@ import sqlite3
 import subprocess
 from datetime import datetime, timezone
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_file
+
+from components.resolution_poller import ResolutionPoller
 
 app = Flask(__name__)
 
@@ -123,10 +125,26 @@ def get_db_stats():
 def parse_log_signals(log_text):
     entries = []
     for line in log_text.split("\n"):
-        if any(kw in line for kw in ["SIGNAL", "ENTER", "EXIT", "INSIDER ANALYSIS", "STOP LOSS", "TAKE PROFIT"]):
+        if any(kw in line for kw in ["SIGNAL", "ENTER", "EXIT", "INSIDER ANALYSIS", "STOP LOSS", "TAKE PROFIT", "RESOLUTION"]):
             ts = line[:26] if len(line) > 26 else ""
             entries.append({"time": ts, "line": line[27:]})
     return entries[-20:]
+
+
+_resolution_poller_instance = None
+
+def get_pnl_stats():
+    """Get real vs simulated P&L stats from trades.db."""
+    global _resolution_poller_instance
+    if _resolution_poller_instance is None:
+        _resolution_poller_instance = ResolutionPoller()
+    
+    db_summary = _resolution_poller_instance.get_db_summary()
+    recent = _resolution_poller_instance.get_recent_resolutions(limit=20)
+    return {
+        "summary": db_summary,
+        "recent_resolutions": recent,
+    }
 
 
 def fmt_pct(v):
@@ -223,11 +241,34 @@ def render_signals(sigs):
     return "\n".join(html)
 
 
+def render_resolved_trades(trades):
+    """Render resolved trades table showing simulated vs actual P&L side by side."""
+    html = []
+    for t in trades:
+        sim = t.get("realized_pnl", 0) or 0
+        actual = t.get("actual_pnl", 0) or 0
+        diff = actual - sim
+        diff_color = "green" if diff >= 0 else "red"
+        actual_color = "green" if actual >= 0 else "red"
+        sim_color = "green" if sim >= 0 else "red"
+        html.append("<tr>"
+            "<td>" + (str(t.get("market_title", ""))[:45] or "N/A") + "</td>"
+            "<td>" + (str(t.get("side", "")) or "N/A") + "</td>"
+            "<td>" + fmt_price(t.get("entry_price")) + "</td>"
+            "<td style='color:" + sim_color + "'>" + fmt_usd(sim) + "</td>"
+            "<td style='color:" + actual_color + ";font-weight:bold;'>" + fmt_usd(actual) + "</td>"
+            "<td style='color:" + diff_color + "'>" + fmt_usd(diff) + "</td>"
+            "<td>" + str(t.get("resolution_outcome", ""))[:25] + "</td>"
+            "<td>" + (str(t.get("timestamp", ""))[:19] if t.get("timestamp") else "N/A") + "</td>"
+            "</tr>")
+    return "\n".join(html) if html else '<tr><td colspan="8" style="color:#8b949e;">No resolved trades yet.</td></tr>'
+
+
 def escape_html(s):
     return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
-def build_html(proc_info, db_stats, log_text, activity):
+def build_html(proc_info, db_stats, log_text, activity, pnl_stats=None):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     status_dot = "running" if proc_info["running"] else "stopped"
     if proc_info["running"]:
@@ -249,6 +290,19 @@ def build_html(proc_info, db_stats, log_text, activity):
     ts = db_stats.get("total_signals", 0)
     un = db_stats.get("unsignaled", 0)
     st = db_stats.get("signals_today", 0)
+
+    # P&L stats
+    if pnl_stats is None:
+        pnl_stats = get_pnl_stats()
+    pnl_summary = pnl_stats.get("summary", {})
+    pnl_realized = pnl_summary.get("total_realized_pnl", 0)
+    pnl_actual = pnl_summary.get("total_actual_pnl", 0)
+    pnl_divergence = pnl_summary.get("divergence", 0)
+    resolved_count = pnl_summary.get("resolved_trades", 0)
+    pnl_realized_color = "green" if pnl_realized >= 0 else "red"
+    pnl_actual_color = "green" if pnl_actual >= 0 else "red"
+    pnl_div_color = "green" if pnl_divergence >= 0 else "red"
+    resolved_html = render_resolved_trades(pnl_stats.get("recent_resolutions", []))
 
     return """<!DOCTYPE html>
 <html lang="en">
@@ -312,11 +366,18 @@ tr:hover{background:#1c2128}
 <div class="metric"><div class="label">Unsignaled</div><div class="value red">""" + str(un) + """</div></div>
 <div class="metric"><div class="label">Signals Today</div><div class="value">""" + str(st) + """</div></div>
 </div>
+<div class="metrics">
+<div class="metric"><div class="label">Sim. P&L (Mark-to-Market)</div><div class="value """ + pnl_realized_color + """">""" + fmt_usd(pnl_realized) + """</div></div>
+<div class="metric"><div class="label">Real P&L (Resolution-Based)</div><div class="value """ + pnl_actual_color + """">""" + fmt_usd(pnl_actual) + """</div></div>
+<div class="metric"><div class="label">Divergence (Real − Sim)</div><div class="value """ + pnl_div_color + """">""" + fmt_usd(pnl_divergence) + """</div></div>
+<div class="metric"><div class="label">Resolved Trades</div><div class="value">""" + str(resolved_count) + """</div></div>
+</div>
 <div class="tabs">
 <div class="tab active" onclick="switchTab('overview')">📊 Overview</div>
 <div class="tab" onclick="switchTab('whales')">🐋 Whales</div>
 <div class="tab" onclick="switchTab('markets')">📈 Markets</div>
 <div class="tab" onclick="switchTab('signals')">🔔 Signals</div>
+<div class="tab" onclick="switchTab('pnl')">💰 P&L</div>
 <div class="tab" onclick="switchTab('logs')">📋 Logs</div>
 </div>
 <div id="overview" class="tab-content active">
@@ -339,6 +400,14 @@ tr:hover{background:#1c2128}
 <table>
 <tr><th>Whale</th><th>Market</th><th>Side</th><th>Outcome</th><th>Size</th><th>Price</th><th>USD</th><th>Conf</th><th>Time</th></tr>
 """ + signals_html + """
+</table>
+</div>
+<div id="pnl" class="tab-content">
+<h3 style="margin-bottom:12px;">Resolution-Based P&L vs Simulated P&L</h3>
+<p style="color:#8b949e;margin-bottom:16px;">Shows trades where the market has resolved. Real P&L is based on the actual resolution outcome; simulated P&L is the mark-to-market value at exit.</p>
+<table>
+<tr><th>Market</th><th>Side</th><th>Entry</th><th>Sim. P&L</th><th>Real P&L</th><th>Diff</th><th>Resolution</th><th>Time</th></tr>
+""" + resolved_html + """
 </table>
 </div>
 <div id="logs" class="tab-content">
@@ -367,7 +436,8 @@ def index():
     if proc_info["running"]:
         log_text = get_log_tail(proc_info["main_pid"])
         activity = parse_log_signals(log_text)
-    return build_html(proc_info, db_stats, log_text, activity)
+    pnl_stats = get_pnl_stats()
+    return build_html(proc_info, db_stats, log_text, activity, pnl_stats=pnl_stats)
 
 
 @app.route("/api/status")
@@ -393,6 +463,35 @@ def api_status():
     return jsonify({
         "process": proc_info,
         "stats": db_stats,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+@app.route("/api/signal-gap-health")
+def api_signal_gap_health():
+    """Return signal-trade gap monitor health status.
+    
+    Reads from .signal_gap_health.json written by the cron monitor.
+    """
+    import os
+    health_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".signal_gap_health.json")
+    if os.path.exists(health_path):
+        return send_file(health_path, mimetype="application/json")
+    return jsonify({
+        "healthy": True,
+        "status": "Monitor not yet run",
+        "checks": {},
+        "alerts": [],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+@app.route("/api/pnl")
+def api_pnl():
+    """Return real vs simulated P&L data."""
+    pnl_stats = get_pnl_stats()
+    return jsonify({
+        "pnl": pnl_stats,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 

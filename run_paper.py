@@ -17,6 +17,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Fix: Line-buffered stdout so crash output isn't silently lost
+sys.stdout.reconfigure(line_buffering=True)
+
 from decimal import Decimal
 
 # --- Fix 1: Follow HTTP redirects ---
@@ -43,6 +46,8 @@ from nautilus_trader.model.enums import AccountType, OmsType
 from nautilus_trader.model.identifiers import TraderId, Venue
 
 from strategies.whale_follower import WhaleFollower, WhaleFollowerConfig
+
+from components.position_reconciler import PositionReconciler
 
 # ── Load top whale markets from CURRENT whale positions (Polymarket data API) ──
 def load_whale_markets_from_api(limit: int = 20) -> list[dict]:
@@ -245,7 +250,7 @@ class AnonymousPolymarketDataFactory(LiveDataClientFactory):
             clock=clock,
             config=config.instrument_provider,
         )
-        return PolymarketDataClient(
+        client = PolymarketDataClient(
             loop=loop,
             http_client=http_client,
             msgbus=msgbus,
@@ -255,6 +260,91 @@ class AnonymousPolymarketDataFactory(LiveDataClientFactory):
             config=config,
             name=name,
         )
+
+        # ── Import WS message types for method overrides ──────────
+        from nautilus_trader.adapters.polymarket.data import (
+            PolymarketQuotes, PolymarketBookSnapshot,
+            PolymarketTrade, PolymarketTickSizeChange,
+        )
+
+        # ── Suppress "Cannot find instrument" WARN spam ────────────
+        # The WebSocket sends data for ALL tokens in a market (Yes/No
+        # outcomes + derived tokens). Some tokens aren't in cache because
+        # markets resolved between API fetch and WebSocket data arrival.
+        # This floods logs at 600MB+/day. The Logger class is Cython/read-only
+        # so we override the Python methods that produce the warnings instead.
+        # See: ~/wiki/nautilus-stale-instrument-warn-spam.md
+        #
+        # The first 100 warnings are still logged, then suppressed silently.
+
+        import itertools
+        _warn_counter = itertools.count()
+
+        def _log_stale_warn(self, instrument_id):
+            """Log first 100 stale instrument warnings, then suppress."""
+            count = next(_warn_counter)
+            if count < 100:
+                self._log.warning(f"Cannot find instrument for {instrument_id} (stale, suppressed)")
+            elif count == 100:
+                self._log.warning(
+                    "[SUPPRESSED] Further 'Cannot find instrument' "
+                    "warnings suppressed — stale instruments from resolved markets."
+                )
+
+        # Override _handle_quotes (highest volume: ~4M/day)
+        def _suppressed_handle_quotes(self, ws_message):
+            for price_change in ws_message.price_changes:
+                instrument_id = get_polymarket_instrument_id(
+                    ws_message.market, price_change.asset_id
+                )
+                instrument = self._cache.instrument(instrument_id)
+                if instrument is None:
+                    _log_stale_warn(self, instrument_id)
+                    continue
+                self._handle_quote(
+                    instrument=instrument,
+                    ws_message=ws_message,
+                    price_change=price_change,
+                )
+
+        # Override _handle_ws_message (book snapshots, trades, tick changes)
+        def _suppressed_handle_ws_message(self, msg):
+            if isinstance(msg, PolymarketQuotes):
+                self._handle_quotes(ws_message=msg)
+            elif isinstance(msg, PolymarketBookSnapshot):
+                instrument_id = get_polymarket_instrument_id(msg.market, msg.asset_id)
+                instrument = self._cache.instrument(instrument_id)
+                if instrument is None:
+                    _log_stale_warn(self, instrument_id)
+                    return
+                self._handle_book_snapshot(instrument=instrument, ws_message=msg)
+            elif isinstance(msg, PolymarketTrade):
+                instrument_id = get_polymarket_instrument_id(msg.market, msg.asset_id)
+                instrument = self._cache.instrument(instrument_id)
+                if instrument is None:
+                    _log_stale_warn(self, instrument_id)
+                    return
+                self._handle_trade(instrument=instrument, ws_message=msg)
+            elif isinstance(msg, PolymarketTickSizeChange):
+                instrument_id = get_polymarket_instrument_id(msg.market, msg.asset_id)
+                instrument = self._cache.instrument(instrument_id)
+                if instrument is None:
+                    _log_stale_warn(self, instrument_id)
+                    return
+                self._handle_instrument_update(instrument=instrument, ws_message=msg)
+            else:
+                self._log.error(f"Unknown websocket message topic: {msg}")
+
+        # Bind and replace methods on this instance
+        from types import MethodType
+
+        client._handle_quotes = MethodType(_suppressed_handle_quotes, client)
+        client._handle_ws_message = MethodType(_suppressed_handle_ws_message, client)
+        # Note: _request_instrument is not overridden because it fires
+        # rarely (requested by nautilus engine) vs every WebSocket message.
+        # ──────────────────────────────────────────────────────────
+
+        return client
 
 
 # ── Custom paper execution (monkey-patch SandboxExecutionClient) ───────
@@ -295,7 +385,25 @@ if __name__ == "__main__":
     print("  Risk:   ZERO — no real money")
     print("=" * 60)
     print()
+
+    # ── P1-3: Position Reconciliation (startup + periodic) ─────────────
+    reconciler = PositionReconciler()
+    print("  Running startup position reconciliation...")
+    report = reconciler.reconcile_all()
+    print(f"  Startup recon: {report.matched}/{report.total_paper_positions} positions matched"
+          f" | {len(report.mismatches)} issues | {len(report.unmatched_paper)} unmatched paper")
+    if not report.ok:
+        print(f"  ⚠️  RECONCILIATION ISSUES: {len(report.mismatches)} mismatches found")
+        for m in report.mismatches[:5]:
+            for issue in m.issues:
+                print(f"       {issue}")
+    # Start periodic reconciliation (every 5 minutes)
+    reconciler.start_periodic(interval_secs=300.0)
+    print("  Periodic reconciliation started: every 300s")
+    print()
+
     try:
         node.run()
     finally:
+        reconciler.stop_periodic()
         node.dispose()

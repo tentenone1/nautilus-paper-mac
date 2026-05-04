@@ -112,6 +112,19 @@ FALLBACK_WHALES = [
     WhaleIdentity(name="redskinrick", proxy_wallet="0xe24838258b572f1771dffba3bcdde57a78def293", roi=0.80, win_rate=0.80, total_trades=80, avg_trade_size=10000, style="high_efficiency", notes="Alpha=80, $31K PnL"),
 ]
 
+def make_fallback_name(wallet_addr: str) -> str:
+    """Generate a fallback whale name from a wallet address.
+    
+    Used when a whale wallet isn't in the known list. Creates an
+    identifiable name from the first 6 chars of the address so
+    we never store "unknown" or "Unknown Whale" in the DB.
+    """
+    if wallet_addr and len(wallet_addr) >= 6:
+        short = wallet_addr[:6].lower()
+        return f"whale_0x{short}"
+    return "unknown"
+
+
 def load_whales_from_db():
     if not _WHALE_DB_PATH.exists():
         print(f"DB not found at {_WHALE_DB_PATH}, using {len(FALLBACK_WHALES)} fallback whales")
@@ -204,13 +217,17 @@ def _categorize_market(title: str) -> str:
                              "europa league", "final", "cup", "score", " win ", "race",
                              "round", "series", " f1 ", "formula", "mma", "league",
                              "olympic", "grand slam", "playoff", "semi", "qualif",
-                             "fc ", " united", "liverpool", "city ", "real ",
+                             "fc ", "fc\b", " united", "liverpool", "city ", "real ",
                              "barça", "barcelona", "juventus", "bayern", "psg",
                              " ncaa ", "college", "athletic", "athlete",
                              "total", "over ", "under ", "handicap",
                              "atp", "wta", "golf", "pga", "masters",
                              "gp", "derby", "grand prix",
-                             "lol", "dota", "valorant", "csgo", "esports"]):
+                             "lol", "dota", "valorant", "csgo", "counter-strike", "esports",
+                             "lck ", "lpl ", "cblol", "lec ", "lcs ", "vct ",
+                             "blast", "iem ", "esl ", "pgl ",
+                             "world cup", "fifa", "atp ", "wta ", "nfl ", "mlb ", "nhl ",
+                             "fifa world cup"]):
         return "sports"
     if any(w in t for w in ["president", "election", "congress", "senate", "house", "governor",
                              "senator", "democrat", "republican", "vote", "poll", "candidate",
@@ -637,7 +654,7 @@ class WhaleTracker:
                 confidence=confidence,
                 target_price=price,
                 suggested_size_usd=usd * 0.25,
-                whale_name="Unknown Whale",
+                whale_name=make_fallback_name(proxy_wallet),
                 whale_roi=0.50,  # Default ROI for unknown whales
                 timestamp=now,
                 reason=f"Large trade {side} {outcome} ${usd:,.0f} @ {price:.3f}",
@@ -750,8 +767,15 @@ class WhaleTracker:
             if size <= 0 or price <= 0 or not proxy_wallet:
                 return None
             
+            # DEBUG: log when proxy_wallet is unknown
+            fallback = make_fallback_name(proxy_wallet)
+            import logging as _lg
+            _lg.getLogger("whale_tracker").debug(
+                f"No whale identity for wallet {proxy_wallet[:10]}... "
+                f"assigning fallback name '{fallback}'"
+            )
             return WhaleTrade(
-                whale_name="",  # Will be filled by _match_whale
+                whale_name=fallback,
                 whale_wallet=proxy_wallet,
                 condition_id=condition_id,
                 token_id=token_id,
@@ -769,6 +793,12 @@ class WhaleTracker:
     
     def _match_whale(self, trade: WhaleTrade) -> Optional[WhaleIdentity]:
         """Check if a trade is from a known whale wallet."""
+        if trade.whale_wallet not in self.whales:
+            import logging as _lg
+            _lg.getLogger("whale_tracker").debug(
+                f"Wallet {trade.whale_wallet[:10]}... not in known whales "
+                f"(have {len(self.whales)} known wallets)"
+            )
         return self.whales.get(trade.whale_wallet)
     
     def _generate_signal(
