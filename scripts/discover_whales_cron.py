@@ -9,6 +9,9 @@ import time
 import requests
 from pathlib import Path
 from collections import Counter
+from strategies.whale_tiering import WhaleTiering
+
+WHALE_TIERING = WhaleTiering()
 
 BASE = Path(__file__).resolve().parents[1]
 DB_PATH = BASE / "pipeline" / "data" / "whale_discovery.db"
@@ -34,6 +37,8 @@ def ensure_db():
             win_rate REAL DEFAULT 0,
             total_trades INTEGER DEFAULT 0,
             category TEXT DEFAULT 'unknown',
+            capital_tier TEXT DEFAULT 'E',
+            precision_tier TEXT DEFAULT 'LOW',
             last_seen TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
@@ -187,6 +192,9 @@ def scan_leaderboard():
             except Exception:
                 pass
             
+            capital_tier = WHALE_TIERING.classify_capital(vol)
+            precision_tier = WHALE_TIERING.classify_precision(wr_est)
+            
             found.append({
                 "address": addr,
                 "name": name,
@@ -196,6 +204,8 @@ def scan_leaderboard():
                 "total_trades": trades_est,
                 "alpha_score": round(alpha, 1),
                 "market_category": market_category,
+                "capital_tier": capital_tier,
+                "precision_tier": precision_tier,
             })
     except Exception as e:
         print(f"[WARN] Leaderboard scan error: {type(e).__name__}: {e}")
@@ -225,16 +235,16 @@ def write_to_db(conn, whales):
         if addr not in existing:
             conn.execute(
                 "INSERT OR IGNORE INTO whales "
-                "(address, name, alpha_score, pnl, volume, win_rate, total_trades, market_category, last_seen) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+                "(address, name, alpha_score, pnl, volume, win_rate, total_trades, market_category, capital_tier, precision_tier, last_seen) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
                 (addr, w["name"], w["alpha_score"], w["pnl"],
-                 w["volume"], w["win_rate"], w["total_trades"], w.get("market_category", "unknown"))
+                 w["volume"], w["win_rate"], w["total_trades"], w.get("market_category", "unknown"), w.get("capital_tier", "E"), w.get("precision_tier", "LOW"))
             )
             added += 1
         elif w.get("market_category") and w["market_category"] != "unknown" and existing[addr] != w["market_category"]:
             conn.execute(
-                "UPDATE whales SET market_category = ?, updated_at = datetime('now') WHERE address = ?",
-                (w["market_category"], addr)
+                "UPDATE whales SET market_category = ?, capital_tier = ?, precision_tier = ?, updated_at = datetime('now') WHERE address = ?",
+                (w["market_category"], w.get("capital_tier", "E"), w.get("precision_tier", "LOW"), addr)
             )
             updated += 1
     
@@ -260,6 +270,12 @@ def main():
     ).fetchall()
     if cat_dist:
         print(f"  Category distribution: {dict(cat_dist)}")
+    
+    print("  Dual-axis breakdown: capital distribution and precision distribution")
+    cap_dist = conn.execute("SELECT capital_tier, COUNT(*) FROM whales GROUP BY capital_tier ORDER BY capital_tier").fetchall()
+    print(f"    Capital: {dict(cap_dist)}")
+    prec_dist = conn.execute("SELECT precision_tier, COUNT(*) FROM whales GROUP BY precision_tier ORDER BY precision_tier").fetchall()
+    print(f"    Precision: {dict(prec_dist)}")
     
     conn.close()
     

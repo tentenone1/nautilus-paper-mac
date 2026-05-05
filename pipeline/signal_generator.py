@@ -26,6 +26,8 @@ class WhaleSignal:
     whale_name: Optional[str] = None
     whale_alpha_score: Optional[float] = None
     whale_win_rate: Optional[float] = None
+    capital_tier: str = 'E'
+    precision_tier: str = 'LOW'
 
 
 class SignalGenerator:
@@ -118,6 +120,8 @@ class SignalGenerator:
         whale_name: Optional[str] = None,
         whale_alpha_score: Optional[float] = None,
         whale_win_rate: Optional[float] = None,
+        capital_tier: str = 'E',
+        precision_tier: str = 'LOW',
     ) -> Optional[WhaleSignal]:
         """
         Generate a signal if it passes filtering criteria.
@@ -180,6 +184,8 @@ class SignalGenerator:
             whale_name=whale_name,
             whale_alpha_score=alpha,
             whale_win_rate=wr,
+            capital_tier=capital_tier,
+            precision_tier=precision_tier,
         )
 
         return signal
@@ -334,7 +340,8 @@ class SignalGenerator:
             cursor = conn.execute("""
                 SELECT whale_address, market_slug, condition_id, token_id, 
                        outcome, side, size, price, confidence, detected_at,
-                       whales.name, whales.alpha_score, whales.win_rate
+                       whales.name, whales.alpha_score, whales.win_rate,
+                       whales.capital_tier, whales.precision_tier
                 FROM whale_signals
                 JOIN whales ON whale_signals.whale_address = whales.address
                 ORDER BY detected_at DESC
@@ -357,6 +364,8 @@ class SignalGenerator:
                     whale_name=row["name"],
                     whale_alpha_score=row["alpha_score"],
                     whale_win_rate=row["win_rate"],
+                    capital_tier=row["capital_tier"],
+                    precision_tier=row["precision_tier"],
                 ))
             return signals
         finally:

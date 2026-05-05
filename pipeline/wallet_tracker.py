@@ -3,11 +3,14 @@ import time
 import requests
 from datetime import datetime, timezone
 
-from pipeline.config import DATA_API, MIN_POSITION_SIZE, MIN_ALPHA_SCORE
+from strategies.whale_tiering import WhaleTiering
+from pipeline.config import DATA_API, MIN_POSITION_SIZE
 from pipeline.db import (
     add_signal, is_position_seen, mark_position_seen,
     get_top_whales, log_scan
 )
+
+WHALE_TIERING = WhaleTiering()
 
 
 class WalletTracker:
@@ -35,10 +38,12 @@ class WalletTracker:
         """Scan a single whale's positions for new activity."""
         address = whale["address"]
         name = whale.get("name", address[:8])
-        alpha_score = whale.get("alpha_score", 50)
+        volume = whale.get("volume", 0.0)
+        win_rate = whale.get("win_rate", 0.0)
 
-        if alpha_score < MIN_ALPHA_SCORE:
-            return []
+        capital_tier = WHALE_TIERING.classify_capital(volume)
+        precision_tier = WHALE_TIERING.classify_precision(win_rate)
+        tier_config = WHALE_TIERING.get_dual_tier_config(capital_tier, precision_tier)
 
         positions = self._fetch_positions(address)
         if not positions:
@@ -62,12 +67,17 @@ class WalletTracker:
 
             # All data from position API
             usd_value = size * avg_price if avg_price else size
-            confidence = self._calculate_confidence(alpha_score, size, avg_price)
+            confidence = self._calculate_confidence(capital_tier, precision_tier, size, avg_price)
+
+            min_confidence = tier_config.get("min_confidence", 0)
+            if min_confidence > 0 and confidence < min_confidence:
+                continue
 
             signal_id = add_signal(
                 whale_address=address,
                 whale_name=name,
-                alpha_score=alpha_score,
+                capital_tier=capital_tier,
+                precision_tier=precision_tier,
                 market_slug=pos.get("slug", ""),
                 market_title=pos.get("title", ""),
                 condition_id=pos.get("conditionId", ""),
@@ -84,7 +94,8 @@ class WalletTracker:
                 signals.append({
                     "id": signal_id,
                     "whale_name": name,
-                    "alpha_score": alpha_score,
+                    "capital_tier": capital_tier,
+                    "precision_tier": precision_tier,
                     "market": pos.get("title", ""),
                     "slug": pos.get("slug", ""),
                     "condition_id": pos.get("conditionId", ""),
@@ -113,10 +124,12 @@ class WalletTracker:
                 else:
                     raise
 
-    def _calculate_confidence(self, alpha_score: float, size: float,
-                              price: float) -> float:
-        """Calculate signal confidence from whale metrics."""
-        base = 0.50 + (alpha_score / 100) * 0.40
+    def _calculate_confidence(self, capital_tier: str, precision_tier: str,
+                              size: float, price: float) -> float:
+        """Calculate signal confidence from dual-axis whale metrics."""
+        tier_config = WHALE_TIERING.get_dual_tier_config(capital_tier, precision_tier)
+        kelly_multiplier = tier_config.get("kelly_multiplier", 1.0)
+        base = 0.40 + kelly_multiplier * 0.10
         size_factor = min(0.10, size / 500000)
         price_factor = 0.05 if (price > 0.80 or price < 0.20) else 0
         return round(min(0.95, base + size_factor + price_factor), 4)
@@ -131,16 +144,30 @@ def get_active_whales() -> list:
 
     for w in KNOWN_WHALES:
         if w["address"] not in seen:
-            active.append(w)
+            vol = w.get("volume", 0.0)
+            wr = w.get("win_rate", 0.0)
+            active.append({
+                "address": w["address"],
+                "name": w.get("name", w["address"][:8]),
+                "volume": vol,
+                "win_rate": wr,
+                "capital_tier": w.get("capital_tier") or WHALE_TIERING.classify_capital(vol),
+                "precision_tier": w.get("precision_tier") or WHALE_TIERING.classify_precision(wr),
+            })
             seen.add(w["address"])
 
     discovered = get_top_whales(limit=20)
     for w in discovered:
         if w["address"] not in seen:
+            vol = w.get("volume", 0.0)
+            wr = w.get("win_rate", 0.0)
             active.append({
                 "address": w["address"],
                 "name": w["name"],
-                "alpha_score": w["alpha_score"],
+                "volume": vol,
+                "win_rate": wr,
+                "capital_tier": WHALE_TIERING.classify_capital(vol),
+                "precision_tier": WHALE_TIERING.classify_precision(wr),
             })
             seen.add(w["address"])
 

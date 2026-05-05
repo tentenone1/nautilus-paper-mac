@@ -29,6 +29,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 import requests
+from strategies.whale_tiering import WhaleTiering
 
 # ---------------------------------------------------------------------------
 # Paths & Constants
@@ -49,6 +50,7 @@ CATEGORIES = ["crypto", "politics", "geopolitics"]
 MIN_TRADE_VOL = 500       # $500 minimum estimated trade volume for a new whale
 LLM_BATCH = 50
 RATE_LIMIT = 0.5
+WHALE_TIERING = WhaleTiering()
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -481,11 +483,14 @@ def write_whales(conn: sqlite3.Connection, scored: list[dict]) -> dict:
         name = whale.get("name", addr[:10])
         score = float(whale.get("score", 0))
         category = whale.get("category", "unknown")
+        capital_tier = WHALE_TIERING.classify_capital(whale.get("estimated_volume", 0))
+        precision_tier = WHALE_TIERING.classify_precision(whale.get("estimated_win_rate", 0.5))
         conn.execute("""
             INSERT OR IGNORE INTO whales (address, name, alpha_score, pnl, volume, win_rate,
-                total_trades, last_seen, source, market_category, tags, discovered_at, updated_at)
-            VALUES (?, ?, ?, 0, 0, 0, 0, ?, 'category_expansion', ?, '[]', ?, ?)
-        """, (addr, name, score, now, category, now, now))
+                total_trades, last_seen, source, market_category, tags, discovered_at, updated_at,
+                capital_tier, precision_tier)
+            VALUES (?, ?, ?, 0, 0, 0, 0, ?, 'category_expansion', ?, '[]', ?, ?, ?, ?)
+        """, (addr, name, score, now, category, now, now, capital_tier, precision_tier))
         new_count += 1
 
     conn.commit()
