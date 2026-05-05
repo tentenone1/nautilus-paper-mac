@@ -3,7 +3,7 @@
     "elite": {
       "alpha_min": 90,
       "alpha_max": 100,
-      "kelly_multiplier": 1.0,
+      "kelly_multiplier": 0.5,
       "max_position_usd": 1000,
       "max_concurrent_positions": 5,
       "min_confidence": 0.25,
@@ -12,7 +12,7 @@
     "established": {
       "alpha_min": 70,
       "alpha_max": 89,
-      "kelly_multiplier": 0.75,
+      "kelly_multiplier": 0.375,
       "max_position_usd": 500,
       "max_concurrent_positions": 8,
       "min_confidence": 0.3,
@@ -21,7 +21,7 @@
     "emerging": {
       "alpha_min": 50,
       "alpha_max": 69,
-      "kelly_multiplier": 0.5,
+      "kelly_multiplier": 0.25,
       "max_position_usd": 250,
       "max_concurrent_positions": 10,
       "min_confidence": 0.4,
@@ -30,7 +30,7 @@
     "speculative": {
       "alpha_min": 0,
       "alpha_max": 49,
-      "kelly_multiplier": 0.25,
+      "kelly_multiplier": 0.125,
       "max_position_usd": 100,
       "max_concurrent_positions": 5,
       "min_confidence": 0.5,
@@ -38,7 +38,7 @@
     }
   },
   "defaults": {
-    "kelly_multiplier": 0.5,
+    "kelly_multiplier": 0.25,
     "max_position_usd": 250,
     "max_concurrent_positions": 5,
     "min_confidence": 0.3,
@@ -60,56 +60,69 @@
       }
     }
   },
+  "whale_overrides": {
+    "description": "Per-whale Kelly multipliers based on actual resolution P&L (Phase B 2026-05-05). Applied on top of tier calculations.",
+    "kelly_multiplier": {
+      "surfandturf": 1.5,
+      "matanovik": 1.5,
+      "pilotbaby": 1.3,
+      "Deep7": 1.3,
+      "loitterer": 1.3,
+      "bomber": 1.2,
+      "bossoskil1": 1.2,
+      "Kds22": 1.2
+    }
+  },
   "edge_kelly_mapping": {
-    "description": "Maps edge_score to base Kelly fraction \u2014 recalibrated 2026-05-04 from 928 closed trades. 0.8-0.9 edge bucket has 70% WR/+85.79 avg P&L (best); 0.0-0.3 bucket has 43% WR/-5.59 avg P&L (unprofitable). Highest Kelly assigned to best-performing buckets.",
+    "description": "HALVED fractions (Phase A - sandbox disconnect fix 2026-05-05). Original values halved to reduce exposure until resolution-based scoring is deployed.",
     "ranges": [
       {
         "min": 0.0,
         "max": 0.3,
-        "kelly_fraction": 0.03
+        "kelly_fraction": 0.015
       },
       {
         "min": 0.3,
         "max": 0.4,
-        "kelly_fraction": 0.08
+        "kelly_fraction": 0.04
       },
       {
         "min": 0.4,
         "max": 0.5,
-        "kelly_fraction": 0.18
+        "kelly_fraction": 0.09
       },
       {
         "min": 0.5,
         "max": 0.6,
-        "kelly_fraction": 0.22
+        "kelly_fraction": 0.11
       },
       {
         "min": 0.6,
         "max": 0.7,
-        "kelly_fraction": 0.2
+        "kelly_fraction": 0.10
       },
       {
         "min": 0.7,
         "max": 0.8,
-        "kelly_fraction": 0.25
+        "kelly_fraction": 0.125
       },
       {
         "min": 0.8,
         "max": 0.9,
-        "kelly_fraction": 0.3
+        "kelly_fraction": 0.15
       },
       {
         "min": 0.9,
         "max": 1.01,
-        "kelly_fraction": 0.2
+        "kelly_fraction": 0.10
       }
     ],
-    "default_kelly_fraction": 0.1
+    "default_kelly_fraction": 0.05
   },
   "kelly_sanity_checks": {
-    "description": "Hard bounds on position sizing: max 25% of portfolio per position, min 1% for any trade that passes filters.",
-    "max_position_pct": 0.25,
-    "min_position_pct": 0.01,
+    "description": "Hard bounds on position sizing: max 12.5% of portfolio per position (halved from 25%), min 0.5% for any trade that passes filters.",
+    "max_position_pct": 0.125,
+    "min_position_pct": 0.005,
     "enabled": true
   }
 }

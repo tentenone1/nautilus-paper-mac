@@ -112,6 +112,8 @@ WHALE_BLACKLIST = frozenset({
     "therighteousdog",
     "timezonewarrior",
     "trade-via-Gravia",
+    "TTEST2",
+    "Wannac",
 })
 SPORTS_WHALE_BLACKLIST = frozenset({
     "0xcF609D3256f0f37f0595E5D",
@@ -368,7 +370,7 @@ class WhaleFollower(Strategy):
         )
 
         # Process through normal pipeline
-        on_signal(config=self.config, log=self.log, signal=signal, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
+        self._on_signal(signal)
 
     def on_stop(self) -> None:
         self.log.info("WhaleFollower stopped")
@@ -376,7 +378,7 @@ class WhaleFollower(Strategy):
             summary = self._tracker.get_whale_summary()
             self.log.info(f"Summary: {summary}")
         if self._trade_buffer:
-            process_trade_buffer(config=self.config, log=self.log, trade_buffer=self._trade_buffer, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
+            self._process_trade_buffer()
 
     @staticmethod
     def _categorize_instrument(inst_id: str) -> str:
@@ -432,7 +434,7 @@ class WhaleFollower(Strategy):
             })
             # Process buffer every TRADE_BUFFER_FLUSH_COUNT trades (was 10)
             if len(self._trade_buffer) >= TRADE_BUFFER_FLUSH_COUNT:
-                process_trade_buffer(config=self.config, log=self.log, trade_buffer=self._trade_buffer, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
+                self._process_trade_buffer()
         
         # Timer-based flush: process buffer every N seconds even if not full
         now = time.time()
@@ -442,7 +444,7 @@ class WhaleFollower(Strategy):
                     f"Trade buffer flush: {len(self._trade_buffer)} trades, "
                     f"total received: {self._trade_count}"
                 )
-                process_trade_buffer(config=self.config, log=self.log, trade_buffer=self._trade_buffer, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
+                self._process_trade_buffer()
             self._last_trade_flush = now
 
     def on_order_filled(self, event: OrderFilled) -> None:
@@ -1411,11 +1413,9 @@ class WhaleFollower(Strategy):
                     continue
                 elif is_certain_loss:
                     self.log.info(
-                        f"CERTAINTY EXIT (LOSS) {inst_id}: mid={mid:.4f}, "
-                        f"entry={entry:.4f}, edge={position_edge:.2f}, "
-                        f"condition_id={pos_info.get('condition_id', '?')[:20]}..."
+                        f"CERTAINTY LOSS BLOCKED (Phase A): {inst_id}: mid={mid:.4f}, "
+                        f"entry={entry:.4f} - holding to resolution instead"
                     )
-                    self.exit_position(inst_id, exit_reason="certainty_loss")
                     continue
                 else:
                     # Log the current state for transparency, but DO NOT exit on mid-price moves

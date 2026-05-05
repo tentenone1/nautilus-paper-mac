@@ -18,7 +18,6 @@ from strategies.wf_market_data import (
     resolve_exit_price,
     should_exit_for_resolution,
 )
-from strategies.wf_position_checks import check_all_positions, check_daily_loss_limit
 
 
 def exit_position(

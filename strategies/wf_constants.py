@@ -36,6 +36,8 @@ WHALE_BLACKLIST = frozenset({
     "Sassy-Bucket",     # -1,277 on sports
     "JPMorgan101",      # -1,510 on sports
     "joblessfinalboss", # -1,446 on sports
+    "TTEST2",           # -17,419 actual P&L
+    "Wannac",           # -1,119 actual P&L
 })
 
 SPORTS_WHALE_BLACKLIST = frozenset({
