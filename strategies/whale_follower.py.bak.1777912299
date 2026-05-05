@@ -24,7 +24,6 @@ from nautilus_trader.common.enums import LogColor
 from nautilus_trader.config import StrategyConfig
 from nautilus_trader.model.data import QuoteTick, TradeTick
 from nautilus_trader.model.enums import OrderSide, TimeInForce
-from nautilus_trader.model.events import OrderFilled
 from nautilus_trader.model.identifiers import InstrumentId, Venue
 from nautilus_trader.model.objects import Currency, Money, Price, Quantity
 from nautilus_trader.trading.strategy import Strategy
@@ -62,21 +61,6 @@ RECYCLE_INTERVAL_SECS = 1800.0  # Unsubscribe/resubscribe interval to flush stal
 # Position management
 RE_ENTRY_COOLDOWN_SECS = 300  # Don't re-enter same instrument within 5 minutes of exit
 LOW_CASH_ALERT_PCT = 0.20  # Warn when free balance drops below 20% of bankroll
-
-# Whale blacklist (auto-reject proven losers, data from trades.db)
-WHALE_BLACKLIST = frozenset({
-    "asdfjh",       # -7,375 on sports
-    "benwyatt",     # -1,866 on sports
-    "Sassy-Bucket", # -1,277 on sports
-    "JPMorgan101",  # -1,510 on sports
-    "joblessfinalboss", # -1,446 on sports
-})
-SPORTS_WHALE_BLACKLIST = frozenset({
-    "SMCAOMCRL",         # -6,209 on sports (profitable on general)
-    "LaBradfordSmith22", # -2,111 on sports (profitable on general)
-    "TheVeryGoodCow",    # -613 on sports
-    "beetlepimp",        # -399 on sports
-})
 
 # Certainty exit thresholds for binary prediction markets
 CERTAINTY_WIN_THRESHOLD = 0.95  # Price above this = very likely to win
@@ -259,14 +243,12 @@ class WhaleFollower(Strategy):
     def _on_test_signal_timer(self, timer_name: str = None) -> None:
         """Generate synthetic whale signal and attempt execution."""
         if not self.config.test_mode:
-            self.log.warning("Test signal timer skipped (test_mode=False)")
             return
 
         self._test_signal_count += 1
         test_instrument = self.config.instrument_ids[self._test_signal_count % len(self.config.instrument_ids)]
         instrument = self.cache.instrument(test_instrument)
         if not instrument:
-            self.log.warning("Test signal instrument not found in cache")
             return
 
         # Synthetic signal: random side, reasonable confidence
@@ -379,7 +361,7 @@ class WhaleFollower(Strategy):
                 self._process_trade_buffer()
             self._last_trade_flush = now
 
-    def on_order_filled(self, event: OrderFilled) -> None:
+    def on_order_filled(self, event) -> None:
         """Log filled orders to the trades database."""
         conn = None
         try:
@@ -458,7 +440,6 @@ class WhaleFollower(Strategy):
 
             # Still empty → not an entry fill (e.g. exit order, auto-managed fill) → skip
             if not pending:
-                self.log.debug("No pending orders in fill handler, skipping")
                 return
 
             raw_entry = pending.get('entry_price', None)
@@ -577,7 +558,7 @@ class WhaleFollower(Strategy):
                 "kelly_fraction": kelly_fraction,
             }
         except Exception as e:
-            self.log.error("[DB] Failed to log trade", extra={"error": str(e)})
+            self.log.error(f"[DB] Failed to log trade: {e}")
         finally:
             if conn:
                 try:
@@ -588,10 +569,6 @@ class WhaleFollower(Strategy):
     def _scan_whale_positions(self) -> None:
         """Poll known whale positions with rate limiting."""
         if not self._tracker or not self.config.auto_trade or self._daily_loss_breached:
-            self.log.warning(
-                "Whale scan skipped: tracker=%s auto_trade=%s daily_loss=%s",
-                bool(self._tracker), self.config.auto_trade, self._daily_loss_breached
-            )
             return
         
         # Reset per-scan trade counter
@@ -636,7 +613,6 @@ class WhaleFollower(Strategy):
     def _analyze_insider_patterns(self) -> None:
         """Run insider edge analysis on tracked whales."""
         if not self._tracker or not self._analyzer:
-            self.log.debug("Insider analysis skipped: no tracker or analyzer")
             return
 
         try:
@@ -672,7 +648,6 @@ class WhaleFollower(Strategy):
     def _process_trade_buffer(self) -> None:
         """Process buffered large trades."""
         if not self._tracker or not self._trade_buffer:
-            self.log.debug("Trade buffer processing skipped: no tracker or buffer empty")
             return
 
         try:
@@ -682,37 +657,6 @@ class WhaleFollower(Strategy):
                 self._on_signal(signal)
         except Exception as e:
             self.log.error(f"Trade processing error: {e}")
-
-    def _llm_score_signal(self, signal: WhaleSignal) -> int:
-        import urllib.request as ureq
-        market = getattr(signal, "market_title", "") or ""
-        whale = signal.whale_name or "unknown"
-        side = getattr(signal, "side", "?") or "?"
-        price = getattr(signal, "target_price", 0.5) or 0.5
-        category = getattr(signal, "market_category", "") or ""
-        prompt = "Score this Polymarket signal 1-10. " +             f"Market: {market[:80]}. Whale: {whale[:30]}. " +             f"Side: {side} at {price:.3f}. Category: {category}."
-        if whale in ("unknown", "unknown whale", ""):
-            prompt += " Unknown whale, be skeptical."
-        payload = json.dumps({
-            "model": "Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf",
-            "messages": [
-                {"role": "system", "content": "Score betting signals 1-10. Known losing whales get 1-3. Good signals get 7-10. Reply ONLY a number 1-10."},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 10, "temperature": 0.01
-        }).encode()
-        try:
-            req = ureq.Request("http://127.0.0.1:8080/v1/chat/completions", data=payload, headers={"Content-Type": "application/json"})
-            with ureq.urlopen(req, timeout=10) as resp:
-                data2 = json.loads(resp.read())
-            content = data2["choices"][0]["message"].get("content", "").strip()
-            import re
-            nums = re.findall(r"\d+", content.replace("<think>","").replace("</think>",""))
-            score = int(nums[0]) if nums else 5
-            return max(1, min(10, score))
-        except Exception as e:
-            self.log.warning(f"LLM score failed: {e}")
-            return 5
 
     def _on_signal(self, signal: WhaleSignal) -> None:
         """Handle a whale signal from ANY subscribed market."""
@@ -748,15 +692,6 @@ class WhaleFollower(Strategy):
             )
             return
 
-        # REJECT: blacklisted whales
-        if signal.whale_name in WHALE_BLACKLIST:
-            self.log.info(f"REJECT blacklisted whale: {signal.whale_name}")
-            return
-        mc = getattr(signal, "market_category", "") or ""
-        if signal.whale_name in SPORTS_WHALE_BLACKLIST and mc.lower() == "sports":
-            self.log.info(f"REJECT sports-blacklisted whale: {signal.whale_name}")
-            return
-
         # REJECT: unknown whale signals with zero edge score (noise trades)
         # Historical data shows 518 such trades lost -$2,532 total.
         if edge_val == 0.0 and (not signal.whale_name or signal.whale_name.lower() in ("unknown", "unknown whale", "")):
@@ -776,13 +711,6 @@ class WhaleFollower(Strategy):
             ).get("kelly_multiplier", 1.0)
             signal.suggested_size_usd = round(signal.suggested_size_usd * tier_kelly, 2)
 
-        # LLM signal quality scoring (1700 Qwen3.5-9B, ~0.3s)
-        llm_score = self._llm_score_signal(signal)
-        if llm_score < 5:
-            self.log.info(f"REJECT LLM score={llm_score}/10: {signal.whale_name}")
-            return
-        self.log.info(f"LLM score={llm_score}/10: {signal.whale_name} | market={getattr(signal, 'market_title', '')[:40]}")
-
         # Log signal with tier info
         self.log.info(
             f"SIGNAL [{signal.source.value}] [{tier.upper()}]: {signal.reason} | "
@@ -791,14 +719,7 @@ class WhaleFollower(Strategy):
             color=LogColor.YELLOW if signal.source == SignalSource.KNOWN_WHALE else LogColor.CYAN,
         )
 
-        if not self.config.auto_trade:
-            self.log.debug("Auto-trade disabled, skipping signal execution")
-            return
-        if self._daily_loss_breached:
-            self.log.warning(
-                "Daily loss limit breached ($%.2f), skipping signal execution",
-                self._daily_pnl
-            )
+        if not self.config.auto_trade or self._daily_loss_breached:
             return
 
         # Dynamic subscription: every signal is processed regardless of pre-subscribed markets.
@@ -995,7 +916,6 @@ class WhaleFollower(Strategy):
 
         qty = instrument.make_qty(Decimal(str(size_usd / price)), round_down=True)
         if qty.as_decimal() <= 0:
-            self.log.debug("Calculated quantity is zero, skipping order entry")
             return
 
         order = self.order_factory.market(
