@@ -91,17 +91,50 @@ LOW_CASH_ALERT_PCT = 0.20  # Warn when free balance drops below 20% of bankroll
 
 # Whale blacklist (auto-reject proven losers, data from trades.db)
 WHALE_BLACKLIST = frozenset({
-    "asdfjh",       # -7,375 on sports
-    "benwyatt",     # -1,866 on sports
-    "Sassy-Bucket", # -1,277 on sports
-    "JPMorgan101",  # -1,510 on sports
-    "joblessfinalboss", # -1,446 on sports
+    "0xcF609D3256f0f37f0595E5D",
+    "FTWUTB",
+    "JPMorgan101",
+    "LaBradfordSmith22",
+    "SMCAOMCRL",
+    "Sassy-Bucket",
+    "TEST-WHALE-3",
+    "TheVeryGoodCow",
+    "alwaysfade",
+    "asdfjh",
+    "beetlepimp",
+    "benwyatt",
+    "easypredict",
+    "iDARKenjoyer",
+    "joblessfinalboss",
+    "johnny234",
+    "lu1zzz",
+    "sbsigner",
+    "therighteousdog",
+    "timezonewarrior",
+    "trade-via-Gravia",
 })
 SPORTS_WHALE_BLACKLIST = frozenset({
-    "SMCAOMCRL",         # -6,209 on sports (profitable on general)
-    "LaBradfordSmith22", # -2,111 on sports (profitable on general)
-    "TheVeryGoodCow",    # -613 on sports
-    "beetlepimp",        # -399 on sports
+    "0xcF609D3256f0f37f0595E5D",
+    "FTWUTB",
+    "JPMorgan101",
+    "LaBradfordSmith22",
+    "SMCAOMCRL",
+    "Sassy-Bucket",
+    "TEST-WHALE-3",
+    "TheVeryGoodCow",
+    "alwaysfade",
+    "asdfjh",
+    "beetlepimp",
+    "benwyatt",
+    "easypredict",
+    "iDARKenjoyer",
+    "joblessfinalboss",
+    "johnny234",
+    "lu1zzz",
+    "sbsigner",
+    "therighteousdog",
+    "timezonewarrior",
+    "trade-via-Gravia",
 })
 
 # Certainty exit thresholds for binary prediction markets
@@ -1476,7 +1509,7 @@ class WhaleFollower(Strategy):
         # Whale position scanning (moved here from on_quote_tick so it runs
         # independently of WebSocket data flow — critical for reliability)
         if now - self._last_scan >= self.config.scan_interval_secs:
-            scan_whale_positions(config=self.config, log=self.log, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
+            self._scan_whale_positions()
             self._last_scan = now
         
         # Memory pressure check - graceful restart before OOM
