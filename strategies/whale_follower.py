@@ -43,6 +43,32 @@ from strategies.whale_tracker_new import (
     WhaleTracker,
 )
 from strategies.whale_insider_analyzer import WhaleInsiderAnalyzer
+from strategies.wf_constants import (
+    TRADE_BUFFER_SIZE_THRESHOLD,
+    TRADE_BUFFER_FLUSH_COUNT,
+    EXIT_TIMER_INTERVAL_SECS,
+    RECYCLE_INTERVAL_SECS,
+    RE_ENTRY_COOLDOWN_SECS,
+    LOW_CASH_ALERT_PCT,
+    WHALE_BLACKLIST,
+    SPORTS_WHALE_BLACKLIST,
+    CERTAINTY_WIN_THRESHOLD,
+    CERTAINTY_LOSS_THRESHOLD,
+    MAX_SANE_RETURN,
+    MEMORY_PRESSURE_MB,
+    STALE_SUBSCRIPTION_TTL_SECS,
+    RESOLUTION_EXIT_HOURS,
+    SPORTS_EXIT_HOURS_BEFORE_EVENT,
+    LIQUIDITY_TIER4_THRESHOLD,
+    LIQUIDITY_TIER3_THRESHOLD,
+    LIQUIDITY_TIER4_MULTIPLIER,
+    LIQUIDITY_TIER3_MULTIPLIER,
+    LIQUIDITY_TIER2_MULTIPLIER,
+)
+from strategies.wf_sports import is_sports_market, get_market_event_time, should_exit_for_sports
+from strategies.wf_db_ops import log_trade_to_db, recover_open_positions
+from strategies.wf_signal_proc import on_signal, scan_whale_positions, process_trade_buffer, llm_score_signal
+from strategies.wf_position_checks import check_all_positions, check_daily_loss_limit
 
 from py_clob_client.client import ClobClient
 from py_clob_client.constants import POLYGON
@@ -236,7 +262,11 @@ class WhaleFollower(Strategy):
         self.log.info("Exit timer registered: every 30s (independent of quote ticks)")
 
         # Recover orphan positions from DB (crash recovery)
-        self._recover_open_positions()
+        open_positions_list = recover_open_positions(log_func=self.log.info)
+        for pos in open_positions_list:
+            inst_key = pos['inst_key']
+            if inst_key not in self._open_positions:
+                self._open_positions[inst_key] = {k: v for k, v in pos.items() if k != 'inst_key'}
 
         self._last_scan = time.time()
 
@@ -305,7 +335,7 @@ class WhaleFollower(Strategy):
         )
 
         # Process through normal pipeline
-        self._on_signal(signal)
+        on_signal(config=self.config, log=self.log, signal=signal, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
 
     def on_stop(self) -> None:
         self.log.info("WhaleFollower stopped")
@@ -313,7 +343,7 @@ class WhaleFollower(Strategy):
             summary = self._tracker.get_whale_summary()
             self.log.info(f"Summary: {summary}")
         if self._trade_buffer:
-            self._process_trade_buffer()
+            process_trade_buffer(config=self.config, log=self.log, trade_buffer=self._trade_buffer, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
 
     @staticmethod
     def _categorize_instrument(inst_id: str) -> str:
@@ -343,8 +373,9 @@ class WhaleFollower(Strategy):
         # Periodic exit checks (every 30s, independent of quote flow)
         now = time.time()
         if now - self._exit_timer_last >= self._exit_timer_interval:
-            self._check_all_positions()
-            self._check_daily_loss_limit()
+            check_all_positions(config=self.config, cache=self.cache, log=self.log, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob)
+            result = check_daily_loss_limit(config=self.config, log=self.log, daily_pnl=self._daily_pnl, daily_pnl_date=self._daily_pnl_date, daily_loss_breached=self._daily_loss_breached, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob, cache=self.cache)
+            self._daily_pnl, self._daily_pnl_date, self._daily_loss_breached = result
             self._exit_timer_last = now
 
         # DISABLED: Blocks event loop with synchronous HTTP requests -> OOM
@@ -368,7 +399,7 @@ class WhaleFollower(Strategy):
             })
             # Process buffer every TRADE_BUFFER_FLUSH_COUNT trades (was 10)
             if len(self._trade_buffer) >= TRADE_BUFFER_FLUSH_COUNT:
-                self._process_trade_buffer()
+                process_trade_buffer(config=self.config, log=self.log, trade_buffer=self._trade_buffer, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
         
         # Timer-based flush: process buffer every N seconds even if not full
         now = time.time()
@@ -378,7 +409,7 @@ class WhaleFollower(Strategy):
                     f"Trade buffer flush: {len(self._trade_buffer)} trades, "
                     f"total received: {self._trade_count}"
                 )
-                self._process_trade_buffer()
+                process_trade_buffer(config=self.config, log=self.log, trade_buffer=self._trade_buffer, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
             self._last_trade_flush = now
 
     def on_order_filled(self, event: OrderFilled) -> None:
@@ -518,44 +549,30 @@ class WhaleFollower(Strategy):
             import uuid
             trade_id = str(uuid.uuid4())
             
-            # ── DB TRANSACTION SAFETY: Explicit BEGIN/COMMIT with rollback on failure ──
-            try:
-                conn.execute("BEGIN TRANSACTION")
-                conn.execute("""
-                    INSERT OR IGNORE INTO trades (trade_id, timestamp, whale_name, whale_address, market_title, side, entry_price, position_size_usd, category, signal_source, edge_score, confidence, kelly_fraction, entry_reason, instrument_id, condition_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    trade_id,
-                    str(datetime.now(timezone.utc)),
-                    whale_name,
-                    whale_address,
-                    market_title,
-                    event.order_side.name if hasattr(event, 'order_side') else 'BUY',
-                    entry_price,
-                    size_usd,
-                    category,
-                    pending.get("signal_source", "whale_tracker"),
-                    edge_score,
-                    confidence,
-                    kelly_fraction,
-                    entry_reason,
-                    inst_id,
-                    inst_id.split("-")[0] if "-" in inst_id else inst_id,
-                ))
-                conn.execute("COMMIT")
-            except Exception as db_error:
-                if conn:
-                    try:
-                        conn.execute("ROLLBACK")
-                    except Exception:
-                        pass
-                self.log.error(
-                    f"[DB] Transaction failed, rolled back: {db_error} | "
-                    f"trade_id={trade_id} | whale={whale_name} | market={market_title[:40]} | "
-                    f"size=${size_usd:.0f} | entry={entry_price:.4f}"
-                )
+            # ── DB OPS: Delegate to wf_db_ops module ──
+            result = log_trade_to_db(
+                trade_id=trade_id,
+                timestamp=str(datetime.now(timezone.utc)),
+                whale_name=whale_name,
+                whale_address=whale_address,
+                market_title=market_title,
+                side=event.order_side.name if hasattr(event, 'order_side') else 'BUY',
+                entry_price=entry_price,
+                position_size_usd=size_usd,
+                category=category,
+                signal_source=pending.get("signal_source", "whale_tracker"),
+                edge_score=edge_score,
+                confidence=confidence,
+                kelly_fraction=kelly_fraction,
+                entry_reason=entry_reason,
+                instrument_id=inst_id,
+                condition_id=inst_id.split("-")[0] if "-" in inst_id else inst_id,
+                log_func=self.log.info,
+            )
+            if result is None:
+                self.log.error(f"[DB] Failed to log trade, skipping position registration")
                 return
-            
+
             conn.close()
             conn = None
             
@@ -1447,8 +1464,8 @@ class WhaleFollower(Strategy):
         during quote tick processing. If quotes stop (frozen sports markets,
         WebSocket drops), exits were never checked.
         """
-        self._check_all_positions()
-        self._check_daily_loss_limit()
+        check_all_positions(config=self.config, cache=self.cache, log=self.log, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob)
+        result = check_daily_loss_limit(config=self.config, log=self.log, daily_pnl=self._daily_pnl, daily_pnl_date=self._daily_pnl_date, daily_loss_breached=self._daily_loss_breached, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob, cache=self.cache); self._daily_pnl, self._daily_pnl_date, self._daily_loss_breached = result
         # Heartbeat log for health monitor — throttle to once per minute
         now = time.time()
         if not hasattr(self, '_last_heartbeat') or (now - self._last_heartbeat) > 60:
@@ -1459,7 +1476,7 @@ class WhaleFollower(Strategy):
         # Whale position scanning (moved here from on_quote_tick so it runs
         # independently of WebSocket data flow — critical for reliability)
         if now - self._last_scan >= self.config.scan_interval_secs:
-            self._scan_whale_positions()
+            scan_whale_positions(config=self.config, log=self.log, tracker=self._tracker, whale_tiering=self._whale_tiering, analyzer=self._analyzer, open_positions=self._open_positions, pending_whales=self._pending_whales, last_exit_time=self._last_exit_time, clob_client=self._clob)
             self._last_scan = now
         
         # Memory pressure check - graceful restart before OOM
