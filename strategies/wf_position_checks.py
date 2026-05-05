@@ -151,21 +151,10 @@ def check_all_positions(
                 continue
             elif is_certain_loss:
                 log.info(
-                    f"CERTAINTY EXIT (LOSS) {inst_id}: mid={mid:.4f}, "
+                    f"CERTAINTY LOSS BLOCKED (Phase A): {inst_id}: mid={mid:.4f}, "
                     f"entry={entry:.4f}, edge={position_edge:.2f}, "
-                    f"condition_id={pos_info.get('condition_id', '?')[:20]}..."
-                )
-                exit_position(
-                    config=config,
-                    cache=cache,
-                    log=log,
-                    open_positions=open_positions,
-                    exited_positions=exited_positions,
-                    last_exit_time=last_exit_time,
-                    resolution_poller=resolution_poller,
-                    clob_client=clob_client,
-                    instrument_id=inst_id,
-                    exit_reason="certainty_loss",
+                    f"condition_id={pos_info.get('condition_id', '?')[:20]}... "
+                    f"holding to resolution instead"
                 )
                 continue
             else:
