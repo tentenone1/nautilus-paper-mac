@@ -1030,11 +1030,7 @@ class WhaleFollower(Strategy):
             )
 
         # Max open positions check
-        open_count = sum(
-            1 for inst_id in self.config.instrument_ids
-            if self.cache.positions_open(instrument_id=inst_id)
-            and self.cache.positions_open(instrument_id=inst_id)[0].quantity.as_double() != 0
-        )
+        open_count = len(self._open_positions)
         max_positions = self.config.max_open_positions
         if open_count >= max_positions:
             self.log.info(
