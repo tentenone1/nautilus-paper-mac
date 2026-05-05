@@ -1,0 +1,470 @@
+{
+  "SMCAOMCRL": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "volume": 128656.8667917556,
+    "win_rate": 0.3597122302158273
+  },
+  "trade-via-Gravia": {
+    "capital_tier": "B",
+    "precision_tier": "MEDIUM",
+    "volume": 86442.139999,
+    "win_rate": 0.4898785425101215
+  },
+  "0x492442EaB586F242B53bDa933fD5dE859c8A3782-1766317541188": {
+    "capital_tier": "B",
+    "precision_tier": "MEDIUM",
+    "volume": 77707.7385421392,
+    "win_rate": 0.5333333333333333
+  },
+  "bossoskil1": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "volume": 64597.155869473,
+    "win_rate": 0.3157894736842105
+  },
+  "mooseborzoi": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "volume": 27175.7353253687,
+    "win_rate": 0.4166666666666667
+  },
+  "LaBradfordSmith22": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "volume": 21248.7789787605,
+    "win_rate": 0.28
+  },
+  "pilotlady": {
+    "capital_tier": "C",
+    "precision_tier": "MEDIUM",
+    "volume": 16977.3141633483,
+    "win_rate": 0.5
+  },
+  "asdfjh": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "volume": 14540.1349916678,
+    "win_rate": 0.28205128205128205
+  },
+  "NewTeamSosed4": {
+    "capital_tier": "C",
+    "precision_tier": "MEDIUM",
+    "volume": 13998.2894698265,
+    "win_rate": 0.47058823529411764
+  },
+  "p291-0xe48109": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 9619.38749999,
+    "win_rate": 0.48214285714285715
+  },
+  "Wannac": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 9484.0961638529,
+    "win_rate": 0.0
+  },
+  "loitterer": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "volume": 9076.8048462584,
+    "win_rate": 0.7368421052631579
+  },
+  "0x5d1d9cfd66ee3068c2a8a57dedf1e1b006dcafd2": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 7314.7574933894,
+    "win_rate": 0.5172413793103449
+  },
+  "johnbaster": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 7057.3299928588,
+    "win_rate": 0.5
+  },
+  "benwyatt": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 6920.6928725787,
+    "win_rate": 0.0
+  },
+  "surfandturf": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "volume": 6367.7801349483,
+    "win_rate": 0.6666666666666666
+  },
+  "beetlepimp": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 6337.0506746636,
+    "win_rate": 0.42857142857142855
+  },
+  "pilotguy": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 6331.4987946489,
+    "win_rate": 0.5
+  },
+  "WangXingYu": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 6149.402908384,
+    "win_rate": 0.3076923076923077
+  },
+  "NonceChaser": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 5751.3788288782,
+    "win_rate": 0.0
+  },
+  "TheOneto3": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 5589.0904512962,
+    "win_rate": 0.0
+  },
+  "meifei123": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 5516.638711009799,
+    "win_rate": 0.375
+  },
+  "RJW1": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "volume": 5412.26879532,
+    "win_rate": 1.0
+  },
+  "Deep7": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 5317.9545561268,
+    "win_rate": 0.625
+  },
+  "Talvez10": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 5017.8020467944,
+    "win_rate": 0.4
+  },
+  "0xcF609D3256f0f37f0595E5Dc64012Fa3a8fEa6f5-1771809916847": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 4742.89999609,
+    "win_rate": 0.35
+  },
+  "newdogbeginning": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 4606.3058860153,
+    "win_rate": 0.0
+  },
+  "matanovik": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "volume": 4464.920393856,
+    "win_rate": 0.8333333333333334
+  },
+  "TheVeryGoodCow": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 4289.6099930785,
+    "win_rate": 0.5833333333333334
+  },
+  "alwaysfade": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 4263.4416571972,
+    "win_rate": 0.0
+  },
+  "joblessfinalboss": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 3930.6074956760003,
+    "win_rate": 0.38461538461538464
+  },
+  "248188374": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 3853.4770607636,
+    "win_rate": 0.5
+  },
+  "1922": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 3837.3024986521,
+    "win_rate": 0.4
+  },
+  "Herdonia": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 3735.2236118936,
+    "win_rate": 0.0
+  },
+  "norrisfan": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 3597.9233670101,
+    "win_rate": 0.0
+  },
+  "Sassy-Bucket": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 3466.7611779503,
+    "win_rate": 0.0
+  },
+  "iDARKenjoyer": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 3454.1857101565,
+    "win_rate": 0.2
+  },
+  "jtwyslljy": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 3038.83955673,
+    "win_rate": 0.2857142857142857
+  },
+  "0x86fbea68d619daf670185ecd38a69aa90f7703d4": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 2999.5963772526,
+    "win_rate": 0.3333333333333333
+  },
+  "JPMorgan101": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 2890.5221116923,
+    "win_rate": 0.16666666666666666
+  },
+  "latinalover": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 2641.8469018894,
+    "win_rate": 0.5
+  },
+  "p6-0x777d9f": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 2601.6924995981,
+    "win_rate": 0.0
+  },
+  "0x53757615de1c42b83f893b79d4241a009dc2aeea": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 2478.6188021159,
+    "win_rate": 0.375
+  },
+  "skyman44": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 2365.5564276989,
+    "win_rate": 0.5
+  },
+  "Supah9ga": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 2353.0474986116997,
+    "win_rate": 0.6
+  },
+  "ic4cream": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 2162.8049977883,
+    "win_rate": 0.0
+  },
+  "AppleTime67": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 2124.98685673,
+    "win_rate": 0.3333333333333333
+  },
+  "KioskJammer": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 1786.69837506,
+    "win_rate": 0.0
+  },
+  "0xE5efD6543002653B2EEF940d8254911862aD9e7A-1729599643232": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 1732.4324985156,
+    "win_rate": 0.5714285714285714
+  },
+  "pilotbaby": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 1619.1649989049001,
+    "win_rate": 0.6
+  },
+  "johnny234": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 1546.8956007077,
+    "win_rate": 0.0
+  },
+  "0x3748e88f10D7fE708a247DAED43eA9453FEC885E-1723384559622": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 1416.8199973477,
+    "win_rate": 0.21428571428571427
+  },
+  "Kds22": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 1387.9774979706,
+    "win_rate": 0.4444444444444444
+  },
+  "05143": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 1355.85265231,
+    "win_rate": 0.5
+  },
+  "p125-0xa1b3fa": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 1312.8999994747,
+    "win_rate": 0.0
+  },
+  "sbsigner": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 1224.1949986654,
+    "win_rate": 0.0
+  },
+  "p26-0x1117ea": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "volume": 1222.5449993334,
+    "win_rate": 0.0
+  },
+  "Soarin22": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "volume": 1106.15749862,
+    "win_rate": 0.6666666666666666
+  },
+  "0x2a2C53bD278c04DA9962Fcf96490E17F3DfB9B": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "volume": 1006.7274990660001,
+    "win_rate": 0.6
+  },
+  "lu1zzz": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 811.2974993581,
+    "win_rate": 0.0
+  },
+  "FTWUTB": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 791.7599989127,
+    "win_rate": 0.0
+  },
+  "p9-0xa71093": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 789.4974986197,
+    "win_rate": 0.0
+  },
+  "loserforever10": {
+    "capital_tier": "E",
+    "precision_tier": "MEDIUM",
+    "volume": 756.7549998522001,
+    "win_rate": 0.5
+  },
+  "easypredict": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 726.8449995188,
+    "win_rate": 0.0
+  },
+  "TheMafiaa": {
+    "capital_tier": "E",
+    "precision_tier": "HIGH",
+    "volume": 720.82749868,
+    "win_rate": 1.0
+  },
+  "DimSumConnoisseur.": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 695.89499826,
+    "win_rate": 0.0
+  },
+  "0xC41D736bDed9ED1acCD6A44235039266219774fD-1777101352681": {
+    "capital_tier": "E",
+    "precision_tier": "HIGH",
+    "volume": 671.93499848,
+    "win_rate": 1.0
+  },
+  "AV23IUa": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 655.9524993113,
+    "win_rate": 0.3333333333333333
+  },
+  "bcda": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 561.1077198500001,
+    "win_rate": 0.0
+  },
+  "timezonewarrior": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 559.5214938415,
+    "win_rate": 0.0
+  },
+  "therighteousdog": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 419.86249843999997,
+    "win_rate": 0.125
+  },
+  "TEST-WHALE-3": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 300.5964,
+    "win_rate": 0.0
+  },
+  "krimut": {
+    "capital_tier": "E",
+    "precision_tier": "MEDIUM",
+    "volume": 271.7724996813,
+    "win_rate": 0.5
+  },
+  "PeterSagan": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 184.50999952819998,
+    "win_rate": 0.0
+  },
+  "NiFengFanPan": {
+    "capital_tier": "E",
+    "precision_tier": "MEDIUM",
+    "volume": 129.71999915220002,
+    "win_rate": 0.5
+  },
+  "0x82fF01408b945af138D3c4619dcf876387D52B09-1774600144403": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 105.2699996558,
+    "win_rate": 0.3333333333333333
+  },
+  "influenz.eth": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "volume": 63.802499950699996,
+    "win_rate": 0.0
+  },
+  "TEST-WHALE-2": {
+    "capital_tier": "E",
+    "precision_tier": "HIGH",
+    "volume": 61.5581996,
+    "win_rate": 1.0
+  }
+}

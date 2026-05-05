@@ -1,128 +1,60 @@
 {
-  "tiers": {
-    "elite": {
-      "alpha_min": 90,
-      "alpha_max": 100,
-      "kelly_multiplier": 0.5,
-      "max_position_usd": 1000,
-      "max_concurrent_positions": 5,
-      "min_confidence": 0.25,
-      "min_edge_score": 0.4
+  "capital_tiers": {
+    "A": { "min_volume": 200000, "max_volume": 999999999, "label": "Whale ($200K+)", "kelly_multiplier": 0.8 },
+    "B": { "min_volume": 50000, "max_volume": 199999, "label": "Dolphin ($50K+)", "kelly_multiplier": 1.0 },
+    "C": { "min_volume": 10000, "max_volume": 49999, "label": "Shark ($10K+)", "kelly_multiplier": 1.0 },
+    "D": { "min_volume": 1000, "max_volume": 9999, "label": "Fish ($1K+)", "kelly_multiplier": 0.75 },
+    "E": { "min_volume": 0, "max_volume": 999, "label": "Minnow (<$1K)", "kelly_multiplier": 0.5 }
+  },
+  "precision_tiers": {
+    "HIGH": { "min_wr": 0.65, "label": "High Precision" },
+    "MEDIUM": { "min_wr": 0.45, "label": "Medium Precision" },
+    "LOW": { "min_wr": 0, "label": "Low Precision" }
+  },
+  "tier_matrix": {
+    "A+HIGH": { "kelly_multiplier": 1.0, "max_position_usd": 2000, "max_concurrent": 8, "min_confidence": 0.2 },
+    "A+MEDIUM": { "kelly_multiplier": 0.6, "max_position_usd": 1000, "max_concurrent": 5, "min_confidence": 0.3 },
+    "A+LOW": { "kelly_multiplier": 0.3, "max_position_usd": 500, "max_concurrent": 3, "min_confidence": 0.4 },
+    "B+HIGH": { "kelly_multiplier": 1.0, "max_position_usd": 1500, "max_concurrent": 8, "min_confidence": 0.2 },
+    "B+MEDIUM": { "kelly_multiplier": 0.75, "max_position_usd": 750, "max_concurrent": 6, "min_confidence": 0.3 },
+    "B+LOW": { "kelly_multiplier": 0.4, "max_position_usd": 400, "max_concurrent": 3, "min_confidence": 0.4 },
+    "C+HIGH": { "kelly_multiplier": 1.0, "max_position_usd": 1000, "max_concurrent": 6, "min_confidence": 0.25 },
+    "C+MEDIUM": { "kelly_multiplier": 0.75, "max_position_usd": 500, "max_concurrent": 5, "min_confidence": 0.35 },
+    "C+LOW": { "kelly_multiplier": 0.5, "max_position_usd": 250, "max_concurrent": 3, "min_confidence": 0.45 },
+    "D+HIGH": { "kelly_multiplier": 1.0, "max_position_usd": 500, "max_concurrent": 5, "min_confidence": 0.3 },
+    "D+MEDIUM": { "kelly_multiplier": 0.75, "max_position_usd": 300, "max_concurrent": 4, "min_confidence": 0.4 },
+    "D+LOW": { "kelly_multiplier": 0.5, "max_position_usd": 150, "max_concurrent": 2, "min_confidence": 0.5 },
+    "E+HIGH": { "kelly_multiplier": 0.8, "max_position_usd": 250, "max_concurrent": 4, "min_confidence": 0.35 },
+    "E+MEDIUM": { "kelly_multiplier": 0.6, "max_position_usd": 150, "max_concurrent": 3, "min_confidence": 0.45 },
+    "E+LOW": { "kelly_multiplier": 0.3, "max_position_usd": 75, "max_concurrent": 2, "min_confidence": 0.55 }
+  },
+  "backwards_compat": {
+    "description": "Dual-axis system replaces old single-axis tiers. Mapping: elite=A+HIGH/B+HIGH, established=B+MEDIUM/C+HIGH, emerging=rest, speculative=E+LOW",
+    "tiers": {
+      "elite": { "alpha_min": 90, "alpha_max": 100, "kelly_multiplier": 0.5, "max_position_usd": 1000, "max_concurrent_positions": 5, "min_confidence": 0.25, "min_edge_score": 0.4 },
+      "established": { "alpha_min": 70, "alpha_max": 89, "kelly_multiplier": 0.375, "max_position_usd": 500, "max_concurrent_positions": 8, "min_confidence": 0.3, "min_edge_score": 0.3 },
+      "emerging": { "alpha_min": 50, "alpha_max": 69, "kelly_multiplier": 0.25, "max_position_usd": 250, "max_concurrent_positions": 10, "min_confidence": 0.4, "min_edge_score": 0.2 },
+      "speculative": { "alpha_min": 0, "alpha_max": 49, "kelly_multiplier": 0.125, "max_position_usd": 100, "max_concurrent_positions": 5, "min_confidence": 0.5, "min_edge_score": 0.1 }
     },
-    "established": {
-      "alpha_min": 70,
-      "alpha_max": 89,
-      "kelly_multiplier": 0.375,
-      "max_position_usd": 500,
-      "max_concurrent_positions": 8,
-      "min_confidence": 0.3,
-      "min_edge_score": 0.3
+    "defaults": { "kelly_multiplier": 0.25, "max_position_usd": 250, "max_concurrent_positions": 5, "min_confidence": 0.3, "min_edge_score": 0.15 },
+    "overrides": { "tag_based": {} },
+    "edge_kelly_mapping": {
+      "description": "HALVED fractions (Phase A - sandbox disconnect fix 2026-05-05).",
+      "ranges": [
+        { "min": 0.0, "max": 0.3, "kelly_fraction": 0.015 },
+        { "min": 0.3, "max": 0.4, "kelly_fraction": 0.04 },
+        { "min": 0.4, "max": 0.5, "kelly_fraction": 0.09 },
+        { "min": 0.5, "max": 0.6, "kelly_fraction": 0.11 },
+        { "min": 0.6, "max": 0.7, "kelly_fraction": 0.10 },
+        { "min": 0.7, "max": 0.8, "kelly_fraction": 0.125 },
+        { "min": 0.8, "max": 0.9, "kelly_fraction": 0.15 },
+        { "min": 0.9, "max": 1.01, "kelly_fraction": 0.10 }
+      ],
+      "default_kelly_fraction": 0.05
     },
-    "emerging": {
-      "alpha_min": 50,
-      "alpha_max": 69,
-      "kelly_multiplier": 0.25,
-      "max_position_usd": 250,
-      "max_concurrent_positions": 10,
-      "min_confidence": 0.4,
-      "min_edge_score": 0.2
-    },
-    "speculative": {
-      "alpha_min": 0,
-      "alpha_max": 49,
-      "kelly_multiplier": 0.125,
-      "max_position_usd": 100,
-      "max_concurrent_positions": 5,
-      "min_confidence": 0.5,
-      "min_edge_score": 0.1
+    "kelly_sanity_checks": {
+      "description": "Hard bounds on position sizing.",
+      "max_position_pct": 0.125, "min_position_pct": 0.005, "enabled": true
     }
-  },
-  "defaults": {
-    "kelly_multiplier": 0.25,
-    "max_position_usd": 250,
-    "max_concurrent_positions": 5,
-    "min_confidence": 0.3,
-    "min_edge_score": 0.15
-  },
-  "overrides": {
-    "tag_based": {
-      "top_performer": {
-        "tier_boost": 1,
-        "description": "Boost tier by 1 level"
-      },
-      "high_profile": {
-        "tier_boost": 1,
-        "description": "Boost tier by 1 level"
-      },
-      "high_efficiency": {
-        "min_confidence_reduction": 0.05,
-        "description": "Reduce min confidence by 0.05"
-      }
-    }
-  },
-  "whale_overrides": {
-    "description": "Per-whale Kelly multipliers based on actual resolution P&L (Phase B 2026-05-05). Applied on top of tier calculations.",
-    "kelly_multiplier": {
-      "surfandturf": 1.5,
-      "matanovik": 1.5,
-      "pilotbaby": 1.3,
-      "Deep7": 1.3,
-      "loitterer": 1.3,
-      "bomber": 1.2,
-      "bossoskil1": 1.2,
-      "Kds22": 1.2
-    }
-  },
-  "edge_kelly_mapping": {
-    "description": "HALVED fractions (Phase A - sandbox disconnect fix 2026-05-05). Original values halved to reduce exposure until resolution-based scoring is deployed.",
-    "ranges": [
-      {
-        "min": 0.0,
-        "max": 0.3,
-        "kelly_fraction": 0.015
-      },
-      {
-        "min": 0.3,
-        "max": 0.4,
-        "kelly_fraction": 0.04
-      },
-      {
-        "min": 0.4,
-        "max": 0.5,
-        "kelly_fraction": 0.09
-      },
-      {
-        "min": 0.5,
-        "max": 0.6,
-        "kelly_fraction": 0.11
-      },
-      {
-        "min": 0.6,
-        "max": 0.7,
-        "kelly_fraction": 0.10
-      },
-      {
-        "min": 0.7,
-        "max": 0.8,
-        "kelly_fraction": 0.125
-      },
-      {
-        "min": 0.8,
-        "max": 0.9,
-        "kelly_fraction": 0.15
-      },
-      {
-        "min": 0.9,
-        "max": 1.01,
-        "kelly_fraction": 0.10
-      }
-    ],
-    "default_kelly_fraction": 0.05
-  },
-  "kelly_sanity_checks": {
-    "description": "Hard bounds on position sizing: max 12.5% of portfolio per position (halved from 25%), min 0.5% for any trade that passes filters.",
-    "max_position_pct": 0.125,
-    "min_position_pct": 0.005,
-    "enabled": true
   }
 }
