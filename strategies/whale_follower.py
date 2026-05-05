@@ -119,6 +119,8 @@ class WhaleFollowerConfig(StrategyConfig, frozen=True):
     max_open_positions: int = 50
     # Max total gross exposure as % of bankroll (hard cap on aggregate position size)
     max_total_exposure_pct: float = 5.0  # Total open positions capped at 500% of bankroll
+    # Daily loss limit: stop trading if daily loss exceeds this
+    daily_loss_limit: float = 500.0
     min_confidence: float = 0.55
     scan_interval_secs: float = 30.0
     auto_trade: bool = True
@@ -169,7 +171,7 @@ class WhaleFollower(Strategy):
         self._recycle_interval: float = RECYCLE_INTERVAL_SECS
         self._daily_pnl: float = 0.0
         self._daily_pnl_date: str = ""
-        self._daily_loss_limit: float = float(os.getenv("DAILY_LOSS_LIMIT", "500.0"))  # Stop trading if daily loss exceeds this (configurable via env)
+        self._daily_loss_limit: float = self.config.daily_loss_limit  # Stop trading if daily loss exceeds this
         self._daily_loss_breached: bool = False  # Permanently stops trading until next day
         self._pending_whales: dict[str, dict] = {}  # client_order_id -> {whale_name, market_title, category}
         self._last_exit_time: dict[str, float] = {}  # inst_id -> timestamp (re-entry cooldown)
