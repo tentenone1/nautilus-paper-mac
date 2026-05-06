@@ -9,12 +9,14 @@ Output: ~/workspace/nautilus-trading/research/jailbreak_analysis.json
 """
 
 import json
+import os
 import sqlite3
 import time
 import urllib.request as ureq
 from datetime import datetime, timezone
 
 DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db"
+BACKUP_DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db.backup-20260506"
 OUTPUT_PATH = "/home/elon-1/workspace/nautilus-trading/research/jailbreak_analysis.json"
 LLM_URL = "http://127.0.0.1:8080/v1/chat/completions"
 LLM_MODEL = "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ2_M.gguf"
@@ -46,7 +48,37 @@ def query_llm(prompt: str) -> str:
 
 
 def main():
-    db = sqlite3.connect(DB_PATH)
+    # Try primary DB first, fall back to backup if insufficient data
+    db_path = BACKUP_DB_PATH if os.path.exists(BACKUP_DB_PATH) else DB_PATH
+    db = sqlite3.connect(db_path)
+
+    # Check if backup has more data than primary
+    primary_count = 0
+    backup_count = 0
+    try:
+        primary = sqlite3.connect(DB_PATH)
+        primary_count = primary.execute(
+            "SELECT COUNT(DISTINCT whale_name) FROM trades WHERE whale_name IS NOT NULL AND whale_name != '' AND whale_name NOT LIKE 'unknown%'"
+        ).fetchone()[0]
+        primary.close()
+    except Exception:
+        pass
+    try:
+        backup = sqlite3.connect(BACKUP_DB_PATH)
+        backup_count = backup.execute(
+            "SELECT COUNT(DISTINCT whale_name) FROM trades WHERE whale_name IS NOT NULL AND whale_name != '' AND whale_name NOT LIKE 'unknown%'"
+        ).fetchone()[0]
+        backup.close()
+    except Exception:
+        pass
+
+    # Use backup if it has significantly more named whales
+    if backup_count > primary_count * 3 and backup_count >= 3:
+        db_path = BACKUP_DB_PATH
+        db = sqlite3.connect(db_path)
+        print(f"[jailbreak] Primary DB has {primary_count} named whales, backup has {backup_count} — using backup", flush=True)
+    else:
+        print(f"[jailbreak] Using primary DB ({primary_count} named whales)", flush=True)
 
     # Get all whales with enough trade data
     whales = db.execute("""
