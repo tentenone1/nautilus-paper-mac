@@ -79,6 +79,16 @@ RESOLUTION_EXIT_HOURS = 6  # Exit if market resolves within this many hours
 
 SPORTS_EXIT_HOURS_BEFORE_EVENT = 1  # Exit sports positions this many hours before game
 SPORTS_KELLY_MULTIPLIER = 0.5  # Halved Kelly for sports (38.6% WR vs 55% breakeven)
+
+# Single-team winner market patterns (reject these — 0% WR, >0K losses)
+SPORTS_SINGLE_TEAM_PATTERNS = [
+    r'^Will\s+.+?\s+win\s+on\s+\d{4}-\d{2}-\d{2}',
+    r'^Will\s+.+?\s+win\s+(the\s+)?(next\s+)?(match|game|race|fight)',
+    r'^Who\s+will\s+win\s+.+',
+    r'^.+\s+to\s+win\s+',
+    r'^Winner\s+of\s+',
+]
+
 SPORTS_DAILY_LOSS_LIMIT = 2000  # Max daily loss on sports before blocking new positions
 SPORTS_AUTO_EXIT_LOSS = 250  # Auto-exit sports positions at -$250 unrealized P&L
 

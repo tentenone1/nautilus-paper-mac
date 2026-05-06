@@ -15,6 +15,7 @@ from strategies.wf_constants import (
     CERTAINTY_LOSS_THRESHOLD,
     CERTAINTY_WIN_THRESHOLD,
     MAX_SANE_RETURN,
+    SPORTS_AUTO_EXIT_LOSS,
 )
 from strategies.wf_exits import (
     _resolve_exit_price_with_deps,
@@ -61,6 +62,7 @@ def check_all_positions(
     for inst_key in expired:
         try:
             inst_id = InstrumentId.from_str(inst_key)
+            pos_info = open_positions.get(inst_key, {})
             exit_position(
                 config=config,
                 cache=cache,
@@ -173,12 +175,43 @@ def check_all_positions(
                     f"holding to resolution instead"
                 )
                 continue
-            else:
-                log.info(
-                    f"HOLDING {inst_id}: entry={entry:.4f}, mid={mid:.4f}, "
-                    f"edge={position_edge:.2f} - holding to resolution"
-                )
-                continue
+
+            # Phase 3: Sports stop-loss check
+            market_category = pos_info.get("market_category", "Unknown")
+            if market_category == "sports":
+                qty = pos.quantity.as_double()
+                if side == "BUY":
+                    unrealized_pnl = qty * (mid - entry)
+                else:
+                    unrealized_pnl = qty * (entry - mid)
+
+                if unrealized_pnl <= -SPORTS_AUTO_EXIT_LOSS:
+                    log.info(
+                        f"SPORTS STOP LOSS {inst_id}: mid={mid:.4f}, "
+                        f"entry={entry:.4f}, qty={qty:.2f}, "
+                        f"unrealized_pnl={unrealized_pnl:.2f}, "
+                        f"threshold=-{SPORTS_AUTO_EXIT_LOSS}"
+                    )
+                    exit_position(
+                        config=config,
+                        cache=cache,
+                        log=log,
+                        open_positions=open_positions,
+                        exited_positions=exited_positions,
+                        last_exit_time=last_exit_time,
+                        resolution_poller=resolution_poller,
+                        clob_client=clob_client,
+                        instrument_id=inst_id,
+                        exit_reason="sports_stop_loss",
+                        market_category=market_category,
+                    )
+                    continue
+
+            log.info(
+                f"HOLDING {inst_id}: entry={entry:.4f}, mid={mid:.4f}, "
+                f"edge={position_edge:.2f} - holding to resolution"
+            )
+            continue
 
         except Exception as pos_error:
             log.error(

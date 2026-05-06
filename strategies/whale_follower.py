@@ -10,6 +10,7 @@ Uses Nautilus framework for execution, position tracking, and risk management.
 
 from __future__ import annotations
 
+import re
 import time
 import os
 import uuid
@@ -67,6 +68,7 @@ from strategies.wf_constants import (
     SPORTS_KELLY_MULTIPLIER,
     SINGLE_TEAM_PATTERNS,
     SPORTS_DAILY_LOSS_LIMIT,
+    SPORTS_SINGLE_TEAM_PATTERNS,
 )
 from strategies.wf_sports import is_sports_market, get_market_event_time, should_exit_for_sports
 from strategies.wf_db_ops import log_trade_to_db, recover_open_positions
@@ -871,6 +873,14 @@ class WhaleFollower(Strategy):
                 self._daily_pnl
             )
             return
+
+        # REJECT: single-team winner markets (sports bias pattern)
+        title = getattr(signal, 'market_title', '') or ''
+        mc = getattr(signal, 'market_category', '') or ''
+        if mc.lower() == 'sports':
+            if any(re.search(p, title, re.IGNORECASE) for p in SPORTS_SINGLE_TEAM_PATTERNS):
+                self.log.info(f"REJECT single-team winner market: {title}")
+                return
 
         # Sports daily loss breach check
         mc = getattr(signal, 'market_category', '') or ''
