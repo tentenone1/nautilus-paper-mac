@@ -166,44 +166,44 @@ Be direct. No disclaimers."""
 
     result = query_llm(prompt)
     
-    # Parse plain-text classification
-    classification = "unknown"
-    trust_score = 5
-    should_copy = False
-    should_fade = False
-    reason = ""
+    # Extract JSON from model output (handle <think> tags and CoT prefix)
+    cleaned = result
+    # Remove think tags
+    cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL)
+    # Strip thinking process prefix  
+    for prefix in ["Here's a thinking process:", "Let me think", "I'll analyze", "Okay, let me"]:
+        if prefix in cleaned:
+            cleaned = cleaned.split(prefix, 1)[-1]
     
-    for line in result.split("\n"):
-        lower = line.lower()
-        if "classification:" in lower or "classify as:" in lower or "classify:" in lower:
-            for c in ["skilled_human", "degenerate_human", "trading_bot", "market_maker", "sacrificial_account", "mixed_entity"]:
-                if c in lower:
-                    classification = c
-                    break
-        if "trust_score:" in lower or "trust:" in lower:
-            nums = re.findall(r"(\d+)(?:/10)?", lower)
-            if nums:
-                trust_score = min(int(nums[0]), 10)
-        if "should_copy:" in lower or "copy:" in lower:
-            should_copy = "yes" in lower or "true" in lower
-        if "should_fade:" in lower or "fade:" in lower:
-            should_fade = "yes" in lower or "true" in lower
-    
-    # Extract reason - get the LAST substantive line of classification
-    lines = result.split("\n")
-    for line in reversed(lines):
-        stripped = line.strip()
-        if len(stripped) > 30 and not any(stripped.startswith(p) for p in ["Here", "I'll", "Okay", "So", "Let", "1.", "2.", "3.", "4.", "5.", "6."]):
-            reason = stripped[:200]
-            break
+    # Parse JSON
+    json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    if json_match:
+        try:
+            parsed = json.loads(json_match.group(0))
+            classification = parsed.get("classification", "unknown")
+            trust_score = parsed.get("trust_score", 5)
+            should_copy = str(parsed.get("should_copy", "no")).lower() in ("yes", "true")
+            should_fade = str(parsed.get("should_fade", "no")).lower() in ("yes", "true")
+            reason = parsed.get("why", "") or parsed.get("reasoning", "") or ""
+            return {
+                "whale": stats["name"],
+                "classification": classification,
+                "trust_score": trust_score,
+                "should_copy": should_copy,
+                "should_fade": should_fade,
+                "reasoning": reason[:200],
+                "llm_raw": result,
+            }
+        except json.JSONDecodeError:
+            pass
     
     return {
         "whale": stats["name"],
-        "classification": classification,
-        "trust_score": trust_score,
-        "should_copy": should_copy,
-        "should_fade": should_fade,
-        "reasoning": reason,
+        "classification": "unknown",
+        "trust_score": 5,
+        "should_copy": False,
+        "should_fade": False,
+        "reasoning": "parse_failed",
         "llm_raw": result,
     }
 
