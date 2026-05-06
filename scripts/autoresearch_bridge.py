@@ -39,6 +39,7 @@ def query_llm(prompt: str) -> str:
         ],
         "max_tokens": 1200,  # FIXED: increased from 600 to allow full JSON output
         "temperature": 0.1,
+        "reasoning_format": "none"
     }).encode()
     try:
         req = urllib.request.Request(LLM_URL, data=payload, headers={"Content-Type": "application/json"})
@@ -74,7 +75,7 @@ def check_midpoint(condition_id: str) -> float | None:
 
 def analyze_market(detection: dict, market_info: dict = None) -> dict:
     market = detection.get("market", "Unknown")
-    price = detection.get("lowest_price", 0.5)
+    price = detection.get("entry_price") or detection.get("lowest_price", 0.5)
     age = detection.get("age_seconds", 0)
     
     prompt = f"""Analyze this Polymarket market and output a trade recommendation as JSON only.
@@ -187,7 +188,7 @@ def main():
         rec = analyze_market(det, market_info)
         rec["timestamp"] = datetime.now(timezone.utc).isoformat()
         rec["condition_id"] = cid
-        rec["detection_price"] = det.get("lowest_price")
+        rec["detection_price"] = det.get("entry_price") or det.get("lowest_price")
         
         recommendations.append(rec)
         
