@@ -322,6 +322,6 @@ def exit_all_positions(
                 exit_reason=exit_reason,
             )
 
-    return size_usd  # tier1: full Kelly size
+    return
 
 
