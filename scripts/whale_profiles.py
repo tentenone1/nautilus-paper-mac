@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db.backup-20260506"
 OUTPUT_PATH = "/home/elon-1/workspace/nautilus-trading/research/whale_profiles.json"
 LLM_URL = "http://127.0.0.1:8080/v1/chat/completions"
-LLM_MODEL = "qwen3.6-35b-a3b"
+LLM_MODEL = "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ2_M.gguf"
 
 # Extreme whales to profile
 PROFILE_WHALES = [
