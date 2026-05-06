@@ -115,6 +115,7 @@ OUTPUT (JSON only):
     # Strip known thinking prefixes
     for prefix in [
         "Here's a thinking process:",
+        "Thinking Process:",
         "Let me think about this:",
         "I'll analyze",
         "Okay, let me",

@@ -68,6 +68,9 @@ from strategies.wf_constants import (
     SPORTS_KELLY_MULTIPLIER,
     SPORTS_DAILY_LOSS_LIMIT,
     SPORTS_WHITELIST_PATTERNS,
+    SPORTS_OU_BLACKLIST_PATTERNS,
+    SPORTS_VS_BLACKLIST_PATTERNS,
+    SINGLE_TEAM_PATTERNS,
 )
 from strategies.wf_sports import is_sports_market, get_market_event_time, should_exit_for_sports
 from strategies.wf_db_ops import log_trade_to_db, recover_open_positions
@@ -1611,6 +1614,9 @@ class WhaleFollower(Strategy):
             self._scan_whale_positions()
             self._last_scan = now
         
+        # Autoresearch LLM signal bridge — check for model-generated trade recommendations
+        self._check_autoresearch_signals()
+        
         # Memory pressure check - graceful restart before OOM
         try:
             with open("/proc/self/status") as f:
@@ -1680,6 +1686,46 @@ class WhaleFollower(Strategy):
                 del self._dynamic_subscriptions[key]
             if stale_keys:
                 self.log.info(f"Cleaned up {len(stale_keys)} stale dynamic subscriptions")
+
+    def _check_autoresearch_signals(self) -> None:
+        """Poll autoresearch signal queue for model-generated trade recommendations."""
+        queue_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research", "autoresearch_signal_queue.json")
+        if not os.path.exists(queue_path):
+            return
+        try:
+            with open(queue_path) as f:
+                signals = json.load(f)
+            if not signals or not isinstance(signals, list):
+                return
+            # Clear the queue immediately to prevent re-processing on crash
+            with open(queue_path, "w") as f:
+                json.dump([], f)
+            processed = 0
+            for s in signals:
+                signal_obj = WhaleSignal(
+                    signal_type=WhaleSignalType.LARGE_POSITION,
+                    condition_id=s.get("condition_id", ""),
+                    token_id=s.get("token_id", ""),
+                    outcome=s.get("outcome", "Yes"),
+                    side=s.get("side", "buy"),
+                    confidence=s.get("confidence", 0.5),
+                    target_price=s.get("entry_price", 0.5),
+                    suggested_size_usd=s.get("suggested_size_usd", 0.0),
+                    whale_name=s.get("whale_name", "autoresearch_llm"),
+                    whale_roi=s.get("whale_roi", 0.0),
+                    timestamp=s.get("timestamp", time.time()),
+                    reason=s.get("reason", "Autoresearch LLM signal"),
+                    market_title=s.get("market_title", ""),
+                    market_category=s.get("market_category", ""),
+                    whale_address=s.get("whale_address", ""),
+                    edge_score=s.get("edge_score", 0.0),
+                )
+                self._on_signal(signal_obj)
+                processed += 1
+            if processed:
+                self.log.info(f"Autoresearch signals: {processed} queued recommendations processed")
+        except Exception as e:
+            self.log.error(f"Autoresearch signal check failed: {e}")
 
     # ── Sports Market Detection (Track A) ─────────────────────────────────────
 

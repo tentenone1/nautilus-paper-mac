@@ -154,10 +154,10 @@ def analyze_whale(stats: dict) -> dict:
 
 WHALE: {stats["name"]}
 Trades: {stats["total_trades"]} total, {stats["wins"]}W / {stats["losses"]}L (WR: {resolved_wr:.0%})  
-PnL: ${stats["total_pnl"]:.0f} (avg win ${stats["avg_win"] or 0:.0f}, avg loss ${stats["avg_loss"] or 0:.0f})
-Avg bet: ${stats["avg_bet"]:.0f}
-Entry range: ${entry_range[0]:.2f}-${entry_range[1]:.2f}
-Markets: {stats["unique_markets"]} unique
+PnL: ${stats["total_pnl"] or 0:.0f} (avg win ${stats["avg_win"] or 0:.0f}, avg loss ${stats["avg_loss"] or 0:.0f})
+Avg bet: ${stats["avg_bet"] or 0:.0f}
+Entry range: ${entry_range[0] or 0:.2f}-${entry_range[1] or 0:.2f}
+Markets: {stats["unique_markets"] or 0} unique
 Categories: {stats["categories"]}
 
 CLASSIFY as ONE of: skilled_human, degenerate_human, trading_bot, market_maker, sacrificial_account, mixed_entity
@@ -174,7 +174,7 @@ Be direct. No disclaimers."""
     cleaned = re.sub(r"<think>", "", cleaned)
     cleaned = re.sub(r"</think>", "", cleaned)
     # Strip thinking process prefix  
-    for prefix in ["Here's a thinking process:", "Let me think", "I'll analyze", "Okay, let me"]:
+    for prefix in ["Here's a thinking process:", "Thinking Process:", "Let me think", "I'll analyze", "Okay, let me"]:
         if prefix in cleaned:
             cleaned = cleaned.split(prefix, 1)[-1]
     

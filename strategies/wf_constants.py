@@ -88,6 +88,22 @@ SPORTS_WHITELIST_PATTERNS = [
     r"^Spread\s*:",    # tolerate "Spread : Lakers"
 ]
 
+# Over/Under market patterns to reject (unprofitable)
+SPORTS_OU_BLACKLIST_PATTERNS = [
+    r"\bO\s*/\s*U\b",      # "O/U 215.5"
+    r"\bOver\s*/\s*Under\b",  # "Over/Under 215.5"
+    r"\bOver\b.*\bUnder\b",  # "Over 215.5 / Under"
+    r"^Over\s+",           # "Over 215.5"
+    r"^Under\s+",          # "Under 215.5"
+]
+
+# Head-to-head vs market patterns to reject (unprofitable)
+SPORTS_VS_BLACKLIST_PATTERNS = [
+    r"\bvs\.?\b",          # "Lakers vs Celtics", "Team A vs Team B"
+    r"\bv\.?\b",           # shorthand "v"
+    r"\s+-\s+",            # "Lakers - Celtics" (hyphen separator)
+]
+
 # Single-team winner market patterns (reject these — 0% WR, >0K losses)
 SPORTS_SINGLE_TEAM_PATTERNS = [
     r'^Will\s+.+?\s+win\s+on\s+\d{4}-\d{2}-\d{2}',
