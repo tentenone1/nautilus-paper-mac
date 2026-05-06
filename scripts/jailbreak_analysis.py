@@ -31,7 +31,7 @@ def query_llm(prompt: str) -> str:
             {"role": "system", "content": "You are a gambling behavior analyst. Analyze whale betting patterns, detect strategy, identify weaknesses. Be direct and specific. Give concrete numbers and patterns. No moralizing."},
             {"role": "user", "content": prompt}
         ],
-        "max_tokens": 800,
+        "max_tokens": 4000,
         "temperature": 0.3,
     }).encode()
     try:
@@ -151,24 +151,55 @@ Be specific. Give a concrete recommendation for each."""
     
     llm_output = query_llm(prompt)
 
+    # Dedicated signal extraction call — ask LLM for pure JSON only
+    signals = []
+    extract_prompt = f"""From the whale data below, output ONLY a JSON array of COPY/FADE signals. No other text.
+
+Whales:
+{analysis_text}
+
+Output format (JSON array only):
+[{{"whale":"name","action":"COPY","confidence":0.0-1.0,"reason":"one sentence"}}]
+
+Replace with actual values for each whale. Action must be COPY or FADE."""
+    extract_result = query_llm(extract_prompt)
+    signals = []
+    # Find all JSON-like arrays in output by bracket depth matching
+    i = 0
+    while i < len(extract_result):
+        if extract_result[i] == "[":
+            depth = 0
+            j = i
+            while j < len(extract_result):
+                if extract_result[j] == "[":
+                    depth += 1
+                elif extract_result[j] == "]":
+                    depth -= 1
+                    if depth == 0:
+                        candidate = extract_result[i:j+1]
+                        try:
+                            parsed = json.loads(candidate)
+                            if isinstance(parsed, list):
+                                for s in parsed:
+                                    if isinstance(s, dict) and s.get("whale") and s.get("action") in ("COPY", "FADE"):
+                                        signals.append(s)
+                        except json.JSONDecodeError:
+                            pass
+                        break
+                j += 1
+            i = j + 1
+        else:
+            i += 1
+    if not signals:
+        print("[jailbreak] No valid JSON signals from extract call", flush=True)
+
     output = {
         "generated": datetime.now(timezone.utc).isoformat(),
         "whales_analyzed": len(results),
         "analysis": analysis_text,
         "llm_analysis": llm_output,
-        "signals": [],
+        "signals": signals,
     }
-
-    # Extract actionable signals from LLM output
-    # (Simple heuristic: "COPY" or "FADE" mentions)
-    for line in llm_output.split("\n"):
-        lower = line.lower()
-        for w in results:
-            if w["name"].lower() in lower:
-                if "copy" in lower or "follow" in lower:
-                    output["signals"].append({"whale": w["name"], "action": "COPY", "reason": line.strip()})
-                elif "fade" in lower or "avoid" in lower or "skip" in lower:
-                    output["signals"].append({"whale": w["name"], "action": "FADE", "reason": line.strip()})
 
     with open(OUTPUT_PATH, "w") as f:
         json.dump(output, f, indent=2)
