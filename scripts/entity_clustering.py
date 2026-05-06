@@ -12,12 +12,14 @@ Outputs: entity clusters + sybil group alerts
 Schedule: daily
 """
 
+import os
 import sqlite3
 import json
 from collections import defaultdict
 from datetime import datetime, timezone
 
 DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db"
+BACKUP_DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db.backup-20260506"
 OUTPUT_PATH = "/home/elon-1/workspace/nautilus-trading/research/entity_clusters.json"
 CORRELATION_WINDOW_SECS = 60  # Trades within 1 minute = correlated
 MIN_SHARED_MARKETS = 3  # Minimum shared markets for correlation
@@ -25,7 +27,28 @@ MIN_TRADES = 5
 
 
 def main():
-    db = sqlite3.connect(DB_PATH)
+    # Fall back to backup DB if primary is too fresh
+    primary_count = 0
+    backup_count = 0
+    for path, count_var in [(DB_PATH, "primary"), (BACKUP_DB_PATH, "backup")]:
+        if os.path.exists(path):
+            try:
+                conn = sqlite3.connect(path)
+                cnt = conn.execute(
+                    "SELECT COUNT(DISTINCT whale_name) FROM trades WHERE whale_name IS NOT NULL AND whale_name != '' AND whale_name NOT LIKE 'unknown%'"
+                ).fetchone()[0]
+                conn.close()
+                if count_var == "primary":
+                    primary_count = cnt
+                else:
+                    backup_count = cnt
+            except Exception:
+                pass
+    
+    db_path = BACKUP_DB_PATH if (backup_count > primary_count * 3 and backup_count >= 3) else DB_PATH
+    db = sqlite3.connect(db_path)
+    src = "backup" if db_path == BACKUP_DB_PATH else "primary"
+    print(f"[entity_clustering] Using {src} DB ({db_path.split('/')[-1]}) — {backup_count} backup vs {primary_count} primary whales", flush=True)
 
     # Get all whales with enough data
     whales = db.execute("""
