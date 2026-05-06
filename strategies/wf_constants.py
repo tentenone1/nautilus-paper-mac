@@ -80,6 +80,14 @@ RESOLUTION_EXIT_HOURS = 6  # Exit if market resolves within this many hours
 SPORTS_EXIT_HOURS_BEFORE_EVENT = 1  # Exit sports positions this many hours before game
 SPORTS_KELLY_MULTIPLIER = 0.5  # Halved Kelly for sports (38.6% WR vs 55% breakeven)
 
+# SPORTS WHITELIST: Only allow markets matching these patterns
+# All other sports markets are rejected (team-vs-team, O/U, single-team)
+# Track record: Only Spread bets are profitable; all other sports formats lose money
+SPORTS_WHITELIST_PATTERNS = [
+    r"^Spread:",       # "Spread: Lakers (-3.5)", "Spread: Thunder (-15.5)"
+    r"^Spread\s*:",    # tolerate "Spread : Lakers"
+]
+
 # Single-team winner market patterns (reject these — 0% WR, >0K losses)
 SPORTS_SINGLE_TEAM_PATTERNS = [
     r'^Will\s+.+?\s+win\s+on\s+\d{4}-\d{2}-\d{2}',

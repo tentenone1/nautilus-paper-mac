@@ -21,8 +21,17 @@ from strategies.whale_tracker_new import (
 from strategies.wf_constants import (
     WHALE_BLACKLIST,
     SPORTS_WHALE_BLACKLIST,
+    SPORTS_WHITELIST_PATTERNS,
+    SPORTS_EXIT_HOURS_BEFORE_EVENT,
+    SPORTS_AUTO_EXIT_LOSS,
+    SPORTS_DAILY_LOSS_LIMIT,
 )
-from strategies.wf_sports import is_sports_market
+from strategies.wf_sports import (
+    is_sports_market,
+    get_market_event_time,
+    should_exit_for_sports,
+)
+from components.paper_execution import set_fill_price, get_fill_price
 
 
 def on_signal(
@@ -184,6 +193,19 @@ def on_signal(
             f"Could not get instrument for {getattr(signal, 'market_title', '')[:40]}, skipping"
         )
         return
+
+    inst_key = str(target_inst)
+
+    # ── Paper Exit Signal Tracking for Sports ───────────────────────────
+    # Log exit conditions at entry time to create an audit trail that
+    # prevents divergence between expected and actual exit behavior.
+    # Runs after instrument resolution (target_inst must be available).
+    if is_sports or market_category.lower() == "sports":
+        log_paper_exit_conditions(
+            signal=signal,
+            instrument_id_str=inst_key,
+            log=log,
+        )
 
     # Determine side
     side = OrderSide.BUY if signal.side == "buy" else OrderSide.SELL
@@ -385,3 +407,95 @@ def llm_score_signal(
     except Exception as e:
         log.warning(f"LLM score failed: {e}")
         return 5
+
+
+def log_paper_exit_conditions(
+    *,
+    signal: WhaleSignal,
+    instrument_id_str: str,
+    log,
+) -> None:
+    """Log paper exit conditions for a sports signal.
+
+    Records the exit rules that will apply to this sports position at the
+    time of signal processing, creating an audit trail that prevents
+    future divergence between expected and actual exit behavior.
+
+    Logs:
+    - Exit timing: hours until event, exit window, auto-exit loss threshold
+    - Blacklist status: whether the whale is sports-blacklisted
+    - Whitelist status: whether the market is a whitelisted Spread bet
+
+    Args:
+        signal: The WhaleSignal being processed.
+        instrument_id_str: The instrument ID string for market lookup.
+        log: Logger instance.
+    """
+    is_sports_flag, sport_type = is_sports_market(
+        getattr(signal, "market_title", "") or ""
+    )
+    if not is_sports_flag:
+        return
+
+    timing = get_market_event_time(getattr(signal, "market_title", "") or "")
+    hours_until_event = timing.get("hours_until_event")
+
+    entry_price = getattr(signal, "target_price", 0.5) or 0.5
+    whale_name = signal.whale_name or "unknown"
+    market_title = (getattr(signal, "market_title", "") or "")[:60]
+
+    # Check whitelist status for sports exit signals
+    is_whitelisted = any(
+        re.search(p, market_title, re.IGNORECASE)
+        for p in SPORTS_WHITELIST_PATTERNS
+    )
+
+    # Check blacklist status
+    on_blacklist = whale_name in SPORTS_WHALE_BLACKLIST
+
+    # Construct exit condition log message
+    blacklist_note = " | blacklisted" if on_blacklist else ""
+    whitelist_note = " | whitelisted=Spread" if is_whitelisted else " | not-whitelisted"
+
+    if hours_until_event is not None and hours_until_event > 0:
+        exit_in_hours = max(0, hours_until_event - SPORTS_EXIT_HOURS_BEFORE_EVENT)
+        log.info(
+            f"SPORTS_PAPER_EXIT | {market_title}"
+            f" | whale={whale_name}"
+            f"{blacklist_note}"
+            f"{whitelist_note}"
+            f" | entry=${entry_price:.3f}"
+            f" | event_in={hours_until_event:.2f}h"
+            f" | exit_in={exit_in_hours:.2f}h"
+            f" | auto_exit=-${SPORTS_AUTO_EXIT_LOSS}"
+            f" | daily_limit=-${SPORTS_DAILY_LOSS_LIMIT}"
+            f" | sport={sport_type}"
+        )
+    else:
+        # No event time available — log nevertheless to show we tracked it
+        log.info(
+            f"SPORTS_PAPER_EXIT | {market_title}"
+            f" | whale={whale_name}"
+            f"{blacklist_note}"
+            f"{whitelist_note}"
+            f" | entry=${entry_price:.3f}"
+            f" | event_time=N/A (no timing data)"
+            f" | auto_exit=-${SPORTS_AUTO_EXIT_LOSS}"
+            f" | daily_limit=-${SPORTS_DAILY_LOSS_LIMIT}"
+            f" | sport={sport_type}"
+        )
+
+    # Log blacklist divergence warning if whale is blacklisted but we did not reject
+    if on_blacklist:
+        log.warning(
+            f"SPORTS_EXIT_DIVERGENCE: {whale_name} is sports-blacklisted but "
+            f"signal passed the blacklist check above (post-check divergence). "
+            f"Verify that SPORTS_WHALE_BLACKLIST contains the latest blacklisted whales."
+        )
+
+    # Register entry price for paper exit divergence tracking
+    if instrument_id_str:
+        log.info(
+            f"PAPER_ENTRY: sports | inst={instrument_id_str[:30]} | "
+            f"price={entry_price:.3f} | whale={whale_name}"
+        )

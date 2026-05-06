@@ -66,9 +66,8 @@ from strategies.wf_constants import (
     LIQUIDITY_TIER3_MULTIPLIER,
     LIQUIDITY_TIER2_MULTIPLIER,
     SPORTS_KELLY_MULTIPLIER,
-    SINGLE_TEAM_PATTERNS,
     SPORTS_DAILY_LOSS_LIMIT,
-    SPORTS_SINGLE_TEAM_PATTERNS,
+    SPORTS_WHITELIST_PATTERNS,
 )
 from strategies.wf_sports import is_sports_market, get_market_event_time, should_exit_for_sports
 from strategies.wf_db_ops import log_trade_to_db, recover_open_positions
@@ -853,12 +852,12 @@ class WhaleFollower(Strategy):
             )
             return
 
-        # REJECT: single-team winner markets (sports bias pattern)
+        # REJECT: non-whitelisted sports markets (whitelist Spread bets only)
         mc = getattr(signal, 'market_category', '') or ''
         if mc.lower() == 'sports':
             title = getattr(signal, 'market_title', '') or ''
-            if any(p in title for p in SINGLE_TEAM_PATTERNS):
-                self.log.info(f"REJECT single-team sports market: {title[:60]} | {signal.whale_name}")
+            if not any(re.search(p, title, re.IGNORECASE) for p in SPORTS_WHITELIST_PATTERNS):
+                self.log.info(f"REJECT non-whitelisted sports market: {title[:60]} | {signal.whale_name}")
                 return
 
         # Apply tier-based position sizing
@@ -892,14 +891,6 @@ class WhaleFollower(Strategy):
                 self._daily_pnl
             )
             return
-
-        # REJECT: single-team winner markets (sports bias pattern)
-        title = getattr(signal, 'market_title', '') or ''
-        mc = getattr(signal, 'market_category', '') or ''
-        if mc.lower() == 'sports':
-            if any(re.search(p, title, re.IGNORECASE) for p in SPORTS_SINGLE_TEAM_PATTERNS):
-                self.log.info(f"REJECT single-team winner market: {title}")
-                return
 
         # Sports daily loss breach check
         mc = getattr(signal, 'market_category', '') or ''
@@ -1479,17 +1470,42 @@ class WhaleFollower(Strategy):
                     )
                     continue
                 else:
-                    # Log the current state for transparency, but DO NOT exit on mid-price moves
+                    # ── WHITELIST: Only Spread bets get sports exit signals ──
+                    # Check resolution/sports exit for positions not certainty win/loss
+                    # Only sports markets whitelisted as "Spread:" get the sports event exit signal
+                    mc = pos_info.get("market_category", "")
+                    if mc.lower() == "sports":
+                        title = pos_info.get("market_title", "") or ""
+                        from strategies.wf_constants import SPORTS_WHITELIST_PATTERNS
+                        is_whitelisted = any(
+                            re.search(p, title, re.IGNORECASE)
+                            for p in SPORTS_WHITELIST_PATTERNS
+                        )
+                        
+                        if is_whitelisted:
+                            # Sports event exit (game imminent) - only for whitelisted Spread bets
+                            if self._should_exit_for_sports(inst_id):
+                                self.log.info(f"SPORTS EVENT EXIT {inst_id}: Spread bet, game imminent")
+                                self.exit_position(inst_id, exit_reason="sports_event")
+                                continue
+                        else:
+                            # Non-whitelisted sports: no sports exit signal
+                            self.log.info(
+                                f"SKIP sports exit (non-whitelisted): {title[:50]} | "
+                                f"entry={entry:.4f}, mid={mid:.4f}"
+                            )
+                    
+                    # Resolution exit check — exit if market resolves within 6 hours
+                    if self._should_exit_for_resolution(inst_id):
+                        self.log.info(f"RESOLUTION EXIT {inst_id}: market resolving soon")
+                        self.exit_position(inst_id, exit_reason="resolution")
+                        continue
+                    
+                    # Log holding state for transparency
                     self.log.info(
                         f"HOLDING {inst_id}: entry={entry:.4f}, mid={mid:.4f}, "
                         f"edge={position_edge:.2f} — holding to resolution"
                     )
-                    continue
-
-                # Resolution exit check — exit if market resolves within 6 hours
-                if self._should_exit_for_resolution(inst_id):
-                    self.log.info(f"RESOLUTION EXIT {inst_id}: market resolving soon")
-                    self.exit_position(inst_id, exit_reason="resolution")
             except Exception as pos_error:
                 # Log error and continue to next position (error isolation)
                 self.log.error(

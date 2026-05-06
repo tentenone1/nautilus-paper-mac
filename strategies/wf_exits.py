@@ -23,6 +23,21 @@ from strategies.wf_market_data import (
 )
 
 
+def _is_market_resolved(
+    condition_id: str,
+    resolution_poller=None,
+) -> bool:
+    """Check if a market is resolved via the resolution poller."""
+    if not condition_id or resolution_poller is None:
+        return False
+    try:
+        from components.resolution_poller import get_market_resolution
+        market = get_market_resolution(condition_id)
+        return market is not None and market.get("resolved", False)
+    except Exception:
+        return False
+
+
 def exit_position(
     *,
     config,
@@ -59,14 +74,42 @@ def exit_position(
         log.debug(f"Position already exited, skipping: {inst_key[:50]}...")
         return
 
-    open_pos_list = cache.positions_open(instrument_id=inst_id)
-    if not open_pos_list or open_pos_list[0].quantity.as_double() == 0:
-        return
-    pos = open_pos_list[0]
-    qty = pos.quantity.as_double()
+    # Look up position info from our registry FIRST (before cache check)
+    pos_info = open_positions.get(inst_key, {})
+    condition_id = pos_info.get("condition_id", "")
 
-    # Look up position info from our registry
-    pos_info = open_positions.pop(inst_key, {})
+    # Check if position is in Nautilus cache
+    open_pos_list = cache.positions_open(instrument_id=inst_id)
+    position_in_cache = open_pos_list and open_pos_list[0].quantity.as_double() != 0
+
+    if not position_in_cache:
+        # Position not in cache - check if market is resolved
+        is_resolved = _is_market_resolved(condition_id, resolution_poller)
+        is_resolved_exit = exit_reason == "market_resolved"
+
+        if is_resolved or is_resolved_exit:
+            # Market is resolved but Nautilus already cleared the position
+            # Record the exit using pos_info data
+            log.info(
+                f"Position not in cache but market resolved, recording exit from pos_info: "
+                f"{inst_key[:50]}..."
+            )
+        else:
+            # Not resolved and not in cache - nothing to do
+            return
+
+    # Get quantity from cache or pos_info
+    if position_in_cache:
+        pos = open_pos_list[0]
+        qty = pos.quantity.as_double()
+        # Pop from registry now that we're processing
+        pos_info = open_positions.pop(inst_key, {})
+    else:
+        # Use quantity from pos_info for resolved markets
+        qty = pos_info.get("size", 0.0) or pos_info.get("position_size_usd", 0.0)
+        # Pop from registry
+        pos_info = open_positions.pop(inst_key, {})
+
     pos_info["inst_key"] = inst_key
 
     entry_price = pos_info.get("entry_price", 0.50)
@@ -148,8 +191,9 @@ def exit_position(
             log=log,
         )
 
-    # Nautilus close
-    _close_position_nautilus(cache, pos, log, inst_id)
+    # Nautilus close (only if position is still in cache)
+    if position_in_cache:
+        _close_position_nautilus(cache, pos, log, inst_id)
 
     last_exit_time[inst_key] = time.time()
 
@@ -323,5 +367,4 @@ def exit_all_positions(
             )
 
     return
-
 
