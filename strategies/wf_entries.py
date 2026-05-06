@@ -168,6 +168,7 @@ def enter_position(
         whale_win_rate=whale_win_rate,
         edge_score=edge_score,
         available_balance=available,
+        market_category=market_category,
         whale_tiering=whale_tiering,
     )
     if size_usd <= 0:

@@ -7,6 +7,7 @@ All state is passed as explicit parameters.
 from __future__ import annotations
 
 from strategies.wf_constants import (
+    SPORTS_KELLY_MULTIPLIER,
     LIQUIDITY_TIER4_THRESHOLD,
     LIQUIDITY_TIER3_THRESHOLD,
     LIQUIDITY_TIER4_MULTIPLIER,
@@ -24,6 +25,8 @@ def kelly_size(
     whale_win_rate: float | None = None,
     edge_score: float = 0.0,
     available_balance: float | None = None,
+    market_category: str = "",
+
     whale_tiering=None,
 ) -> float:
     """Kelly criterion position sizing with edge_score calibration.
@@ -69,6 +72,10 @@ def kelly_size(
     kelly = (b * p - q) / b
     if kelly <= 0:
         return 0.0
+
+    # Sports markets: apply halved Kelly multiplier (38.6% WR vs 55% breakeven)
+    if market_category.lower() == "sports":
+        kelly_fraction *= SPORTS_KELLY_MULTIPLIER
 
     # Base fractional Kelly from config
     base_size = effective_bankroll * kelly * kelly_fraction
