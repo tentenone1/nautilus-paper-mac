@@ -21,18 +21,19 @@ OUTPUT_PATH = "/home/elon-1/workspace/nautilus-trading/research/whale_profiles.j
 LLM_URL = "http://192.168.50.148:1234/v1/chat/completions"
 LLM_MODEL = "qwen3.6-35b-a3b-uncensored-hauhaucs-aggressive"
 
-# Extreme whales to profile
-PROFILE_WHALES = [
-    "SMCAOMCRL",     # 306 trades, 36% WR, -$2.2K — highest volume, negative edge
-    "asdfjh",        # 39 trades, 28% WR, -$7.3K — sacrificial account pattern
-    "benwyatt",      # 27 trades, 0% WR, -$1.9K — 100% loss rate
-    "surfandturf",   # 17 trades, 67% WR, +$1.7K — proven winner
-    "pilotbaby",     # 5 trades, 60% WR, +$983 — small sample, high quality
-    "loitterer",     # 43 trades, 75% WR, +$793 — consistent winner
-    "mooseborzoi",   # 73 trades, 42% WR, -$132 — signal account pattern
-    "Wannac",        # Blacklisted — extreme loser
-    "bomber",        # 2 trades, +$532 — suspected manipulator (paired with asdfjh)
-]
+# Load ALL whales with wallet addresses from backup DB
+def load_all_whales(db) -> list[str]:
+    """Load every whale name from the backup DB that has trade data."""
+    rows = db.execute("""
+        SELECT whale_name, COUNT(*) as cnt FROM trades 
+        WHERE whale_name IS NOT NULL AND whale_name != '' 
+          AND whale_name NOT LIKE 'unknown%'
+          AND whale_name NOT LIKE 'p%-0x%'
+          AND whale_name NOT LIKE '0x%'
+        GROUP BY whale_name
+        ORDER BY cnt DESC
+    """).fetchall()
+    return [r[0] for r in rows]
 
 
 def query_llm(prompt: str) -> str:
@@ -215,8 +216,11 @@ def main():
     db = sqlite3.connect(DB_PATH)
     
     profiles = []
-    for whale_name in PROFILE_WHALES:
-        print(f"  Profiling {whale_name}...", flush=True)
+    all_whales = load_all_whales(db)
+    print(f"[whale_profiles] Loaded {len(all_whales)} whales from DB", flush=True)
+    
+    for i, whale_name in enumerate(all_whales):
+        print(f"  [{i+1}/{len(all_whales)}] Profiling {whale_name}...", flush=True)
         stats = get_whale_stats(db, whale_name)
         
         # Quick heuristic classification before LLM

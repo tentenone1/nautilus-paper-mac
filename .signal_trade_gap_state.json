@@ -1,9 +1,9 @@
 {
   "prev_open_count": 11,
   "stall_start": null,
-  "last_gap_alert": 1778073301.686736,
+  "last_gap_alert": 1778076001.6313384,
   "last_stall_alert": 1778035203.6151984,
-  "consecutive_gaps": 4,
+  "consecutive_gaps": 13,
   "schema_version": 1,
   "recent_signals": 32,
   "latest_signal": "2026-05-06T13:01:45.652150+00:00",
