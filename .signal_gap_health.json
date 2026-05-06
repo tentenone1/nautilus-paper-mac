@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-06T11:40:01.371449+00:00",
+  "timestamp": "2026-05-06T11:45:02.054439+00:00",
   "healthy": false,
   "status": "\u26a0\ufe0f 1 alert(s)",
   "checks": {
@@ -8,11 +8,11 @@
     "open_trade_count": 9,
     "trades_last_hour": 0,
     "closes_last_hour": 0,
-    "consecutive_gaps": 8,
+    "consecutive_gaps": 9,
     "stall_minutes": 0,
     "max_open_positions": 50
   },
   "alerts": [
-    "\ud83d\udea8 SIGNAL-TRADE GAP\n\u2022 29 whale signals in 30m\n\u2022 Latest signal: 2026-05-06T07:32:46.435522+00:00\n\u2022 0 new trades in trades.db (30m)\n\u2022 Consecutive gap checks: 8\n\u2022 Check: strategy config, position cap, blocking conditions"
+    "\ud83d\udea8 SIGNAL-TRADE GAP\n\u2022 29 whale signals in 30m\n\u2022 Latest signal: 2026-05-06T07:32:46.435522+00:00\n\u2022 0 new trades in trades.db (30m)\n\u2022 Consecutive gap checks: 9\n\u2022 Check: strategy config, position cap, blocking conditions"
   ]
 }

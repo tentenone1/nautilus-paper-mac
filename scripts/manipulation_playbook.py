@@ -10,7 +10,7 @@ import json
 import urllib.request
 from datetime import datetime, timezone
 
-LLM_URL = "http://127.0.0.1:8080/v1/chat/completions"
+LLM_URL = "http://192.168.50.148:1234/v1/chat/completions"
 LLM_MODEL = "qwen3.6-35b-a3b"
 OUTPUT_PATH = "/home/elon-1/workspace/nautilus-trading/research/manipulation_playbook.json"
 
