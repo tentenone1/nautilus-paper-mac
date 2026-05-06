@@ -186,7 +186,7 @@ class WhaleFollowerConfig(StrategyConfig, frozen=True):
     # Max total gross exposure as % of bankroll (hard cap on aggregate position size)
     max_total_exposure_pct: float = 5.0  # Total open positions capped at 500% of bankroll
     # Daily loss limit: stop trading if daily loss exceeds this
-    daily_loss_limit: float = 500.0
+    daily_loss_limit: float = 10000.0
     # Sports-specific daily loss limit: stop sports trading if sports daily loss exceeds this
     sports_daily_loss_limit: float = 2000.0
     min_confidence: float = 0.55
@@ -641,6 +641,25 @@ class WhaleFollower(Strategy):
                 "confidence": confidence,
                 "kelly_fraction": kelly_fraction,
             }
+
+            # ── Price Pump Tracking Hook ────────────────────────────────────────
+            # Subscribe this market to price pump monitoring so that price
+            # movements after the whale's entry can be tracked.
+            try:
+                from components.price_tracker import subscribe as _pt_subscribe
+
+                _pt_subscribe(
+                    market_id=cond_id,
+                    signal_id=trade_id,
+                    entry_price=entry_price,
+                    whale_address=whale_address,
+                    whale_name=whale_name,
+                    market_title=market_title,
+                )
+            except ImportError:
+                pass  # price_tracker not available yet
+            except Exception as _pt_err:
+                self.log.warning("Price tracker hook failed: %s", _pt_err)
         except Exception as e:
             self.log.error("[DB] Failed to log trade", extra={"error": str(e)})
         finally:
