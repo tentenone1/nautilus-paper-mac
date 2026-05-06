@@ -22,6 +22,7 @@ from strategies.wf_constants import (
     WHALE_BLACKLIST,
     SPORTS_WHALE_BLACKLIST,
 )
+from strategies.wf_sports import is_sports_market
 
 
 def on_signal(
@@ -156,6 +157,17 @@ def on_signal(
             getattr(log, "_daily_pnl", 0.0),
         )
         return
+
+    # Sports-specific daily loss check
+    market_category = getattr(signal, "market_category", "") or ""
+    is_sports, sport_type = is_sports_market(getattr(signal, "market_title", "") or "")
+    if is_sports or market_category.lower() == "sports":
+        if getattr(log, "_sports_daily_loss_breached", False):
+            log.warning(
+                "Sports daily loss limit breached ($%.2f), skipping sports signal execution",
+                getattr(log, "_sports_daily_pnl", 0.0),
+            )
+            return
 
     # Dynamic subscription: every signal is processed regardless of
     # pre-subscribed markets.

@@ -7,6 +7,7 @@ from the trades database. No class coupling — all state is passed as parameter
 from __future__ import annotations
 
 import sqlite3
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -172,6 +173,7 @@ def log_trade_to_db(
 def recover_open_positions(
     db_path: str | Path | None = None,
     log_func=None,
+    max_recovery_age_hours: float = 4.0,
 ) -> list[dict]:
     """Reload unfinished positions from the trades DB.
 
@@ -179,15 +181,24 @@ def recover_open_positions(
     a list of position info dicts suitable for populating an _open_positions
     registry.
 
+    Only recovers trades newer than ``max_recovery_age_hours``. Older orphans
+    (from crashed runs) are skipped — they will be cleaned from the DB on the
+    next successful exit or by admin maintenance. This prevents stale orphans
+    from filling ``_open_positions`` and blocking ``max_open_positions``.
+
     Args:
         db_path: Path to trades.db. Defaults to research/trades.db.
         log_func: Optional logging callable.
+        max_recovery_age_hours: Skip orphans older than this many hours.
+            Default 4.0 (matches ``WhaleFollowerConfig.max_hold_hours``).
 
     Returns:
         List of position dicts, each with keys: inst_key, whale_name,
         market_title, category, side, entry_price, size, entry_time,
         trade_id, condition_id, venue_position_id, edge_score.
     """
+    from datetime import datetime, timezone
+
     db = Path(db_path) if db_path else _DEFAULT_DB_PATH
     if not db.exists():
         if log_func:
@@ -199,7 +210,7 @@ def recover_open_positions(
         conn = sqlite3.connect(str(db))
         rows = conn.execute(
             "SELECT instrument_id, trade_id, whale_name, market_title, category, "
-            "side, entry_price, position_size_usd, condition_id, edge_score "
+            "side, entry_price, position_size_usd, condition_id, edge_score, timestamp "
             "FROM trades WHERE exit_reason IS NULL "
             "AND instrument_id IS NOT NULL "
             "ORDER BY timestamp"
@@ -210,9 +221,28 @@ def recover_open_positions(
                 log_func("[RECOVER] No orphan positions to recover")
             return []
 
+        now = datetime.now(timezone.utc)
+        cutoff_seconds = max_recovery_age_hours * 3600
         recovered: list[dict] = []
+        skipped = 0
+
         for row in rows:
-            inst_id, trade_id, whale_name, market_title, category, side, entry_price, size, cond_id, edge_score = row
+            inst_id, trade_id, whale_name, market_title, category, side, entry_price, size, cond_id, edge_score, ts_str = row
+
+            # ── Skip stale orphans (crashed sandbox runs) ──────────────
+            try:
+                ts = datetime.fromisoformat(ts_str)
+                age_seconds = (now - ts).total_seconds()
+                if age_seconds > cutoff_seconds:
+                    if log_func:
+                        log_func(
+                            f"[RECOVER] SKIP stale orphan ({age_seconds/3600:.1f}h old): "
+                            f"{whale_name or '?'} | {market_title[:40] if market_title else inst_id[:40]}"
+                        )
+                    skipped += 1
+                    continue
+            except (ValueError, TypeError):
+                pass  # can't parse timestamp → include anyway (safer to recover)
 
             # Try to parse as InstrumentId; fall back to raw string
             try:
@@ -229,7 +259,7 @@ def recover_open_positions(
                 "side": side or "BUY",
                 "entry_price": entry_price or 0.5,
                 "size": size or 0.0,
-                "entry_time": 0.0,  # unknown, let exit timer decide
+                "entry_time": time.time(),  # use current time so exit timer can age-check properly
                 "trade_id": trade_id,
                 "condition_id": cond_id or "",
                 "venue_position_id": "",

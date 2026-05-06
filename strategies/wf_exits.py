@@ -13,7 +13,10 @@ from pathlib import Path
 
 from nautilus_trader.model.identifiers import InstrumentId
 
+from datetime import datetime, timezone
+
 from strategies.wf_constants import MAX_SANE_RETURN
+from strategies.wf_sports import is_sports_market
 from strategies.wf_market_data import (
     resolve_exit_price,
     should_exit_for_resolution,
@@ -32,6 +35,7 @@ def exit_position(
     clob_client=None,
     instrument_id: InstrumentId | None = None,
     exit_reason: str = "manual",
+    market_category: str = "",
 ) -> None:
     """Close current position with P&L tracking and DB update.
 
@@ -78,12 +82,37 @@ def exit_position(
         log=log,
     )
 
+    # Get market category from pos_info or parameter
+    market_cat = pos_info.get("market_category", market_category or "Unknown")
+
     # Calculate P&L
     side = pos_info.get("side", "BUY")
     if side == "BUY":
         realized_pnl = qty * (exit_price - entry_price)
     else:
         realized_pnl = qty * (entry_price - exit_price)  # SELL = short
+
+    # Track sports-specific P&L
+    is_sports, sport_type = is_sports_market(inst_key)
+    if is_sports or market_cat.lower() == "sports":
+        sports_pnl = getattr(log, "_sports_daily_pnl", 0.0)
+        sports_date = getattr(log, "_sports_daily_pnl_date", "")
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        if sports_date != today_str:
+            sports_pnl = 0.0
+            sports_date = today_str
+        sports_pnl += realized_pnl
+        setattr(log, "_sports_daily_pnl", sports_pnl)
+        setattr(log, "_sports_daily_pnl_date", sports_date)
+
+        # Check sports daily loss limit
+        sports_limit = getattr(config, "sports_daily_loss_limit", 2000.0)
+        if sports_pnl <= -sports_limit:
+            setattr(log, "_sports_daily_loss_breached", True)
+            log.error(
+                f"SPORTS DAILY LOSS LIMIT BREACHED: ${sports_pnl:,.2f} / "
+                f"-${sports_limit:,.2f}. Blocking new sports positions."
+            )
 
     realized_return = (
         (exit_price - entry_price) / entry_price

@@ -32,6 +32,7 @@ LOW_CASH_ALERT_PCT = 0.20  # Warn when free balance drops below 20% of bankroll
 
 WHALE_BLACKLIST = frozenset({
     "asdfjh",           # -7,375 on sports
+    "bossoskil1",         # -6,209 actual P&L, 36% WR (jailbreak FADE)
     "benwyatt",         # -1,866 on sports
     "Sassy-Bucket",     # -1,277 on sports
     "JPMorgan101",      # -1,510 on sports
@@ -77,6 +78,15 @@ RESOLUTION_EXIT_HOURS = 6  # Exit if market resolves within this many hours
 # ── Sports Market Timing ─────────────────────────────────────────────────────
 
 SPORTS_EXIT_HOURS_BEFORE_EVENT = 1  # Exit sports positions this many hours before game
+SPORTS_KELLY_MULTIPLIER = 0.5  # Halved Kelly for sports (38.6% WR vs 55% breakeven)
+SPORTS_DAILY_LOSS_LIMIT = 2000  # Max daily loss on sports before blocking new positions
+SPORTS_AUTO_EXIT_LOSS = 250  # Auto-exit sports positions at -$250 unrealized P&L
+
+# Single-team winner market patterns to reject
+SINGLE_TEAM_PATTERNS = [
+    "Will ", " win the ", " win on ",
+    " win ", " to win ", " make the ",
+]
 
 
 # ── Liquidity Tier Thresholds (volume + liquidity in USD) ────────────────────
@@ -121,6 +131,7 @@ class WhaleFollowerConfig(StrategyConfig, frozen=True):
     max_total_exposure_pct: float = 5.0  # Total open positions capped at 500% of bankroll
     # Daily loss limit: stop trading if daily loss exceeds this
     daily_loss_limit: float = 500.0
+    sports_daily_loss_limit: float = 2000.0
     min_confidence: float = 0.55
     scan_interval_secs: float = 30.0
     auto_trade: bool = True

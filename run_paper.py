@@ -20,6 +20,40 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Fix: Line-buffered stdout so crash output isn't silently lost
 sys.stdout.reconfigure(line_buffering=True)
 
+# ── PID file lock — prevent duplicate processes (systemd User= double-fork workaround) ──
+import atexit
+PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".run_paper.pid")
+
+def _check_pid_lock():
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                old_pid = int(f.read().strip())
+            # Check if process with that PID is still running
+            os.kill(old_pid, 0)  # signal 0 = existence check
+            print(f"Another instance already running (PID {old_pid}). Exiting (code 1).")
+            sys.exit(1)  # exit 1 = failure so systemd RestartPreventExitStatus=1 doesn't retry
+        except (ValueError, OSError, ProcessLookupError):
+            # PID file stale or process dead — we can start
+            pass
+
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+
+    def _cleanup_pid():
+        try:
+            if os.path.exists(PID_FILE):
+                with open(PID_FILE) as f:
+                    stored = f.read().strip()
+                if stored == str(os.getpid()):
+                    os.remove(PID_FILE)
+        except OSError:
+            pass
+
+    atexit.register(_cleanup_pid)
+
+_check_pid_lock()
+
 from decimal import Decimal
 
 # --- Fix 1: Follow HTTP redirects ---

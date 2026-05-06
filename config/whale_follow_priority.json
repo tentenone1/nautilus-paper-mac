@@ -1,0 +1,8 @@
+{
+  "priority_whales": [
+    "Countryside",
+    "trade-via-Gravia"
+  ],
+  "source": "jailbreak_strategies.json",
+  "confidence_threshold": 0.8
+}

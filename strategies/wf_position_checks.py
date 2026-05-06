@@ -72,6 +72,7 @@ def check_all_positions(
                 clob_client=clob_client,
                 instrument_id=inst_id,
                 exit_reason="max_hold",
+                market_category=pos_info.get("market_category", "Unknown"),
             )
         except Exception as e:
             log.error(f"Error exiting expired position {inst_key[:50]}...: {e}")
@@ -89,6 +90,20 @@ def check_all_positions(
 
             open_pos_list = cache.positions_open(instrument_id=inst_id)
             if not open_pos_list or open_pos_list[0].quantity.as_double() == 0:
+                # Clean up stale orphan positions not in Nautilus cache
+                pos_info = open_positions.get(inst_key, {})
+                et = pos_info.get("entry_time")
+                if et is None or et <= 0:
+                    stale_age = float("inf")
+                else:
+                    stale_age = now - et
+                if stale_age > max_hold * 3600:
+                    log.info(
+                        f"CLEANUP stale orphan {inst_key[:50]}...: "
+                        f"age={stale_age/3600:.1f}h > max_hold={max_hold}h, "
+                        f"not in Nautilus cache"
+                    )
+                    del open_positions[inst_key]
                 continue
 
             pos = open_pos_list[0]
@@ -147,6 +162,7 @@ def check_all_positions(
                     clob_client=clob_client,
                     instrument_id=inst_id,
                     exit_reason="certainty_win",
+                    market_category=pos_info.get("market_category", "Unknown"),
                 )
                 continue
             elif is_certain_loss:

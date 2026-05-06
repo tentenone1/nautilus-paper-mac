@@ -64,6 +64,9 @@ from strategies.wf_constants import (
     LIQUIDITY_TIER4_MULTIPLIER,
     LIQUIDITY_TIER3_MULTIPLIER,
     LIQUIDITY_TIER2_MULTIPLIER,
+    SPORTS_KELLY_MULTIPLIER,
+    SINGLE_TEAM_PATTERNS,
+    SPORTS_DAILY_LOSS_LIMIT,
 )
 from strategies.wf_sports import is_sports_market, get_market_event_time, should_exit_for_sports
 from strategies.wf_db_ops import log_trade_to_db, recover_open_positions
@@ -182,6 +185,8 @@ class WhaleFollowerConfig(StrategyConfig, frozen=True):
     max_total_exposure_pct: float = 5.0  # Total open positions capped at 500% of bankroll
     # Daily loss limit: stop trading if daily loss exceeds this
     daily_loss_limit: float = 500.0
+    # Sports-specific daily loss limit: stop sports trading if sports daily loss exceeds this
+    sports_daily_loss_limit: float = 2000.0
     min_confidence: float = 0.55
     scan_interval_secs: float = 30.0
     auto_trade: bool = True
@@ -234,6 +239,9 @@ class WhaleFollower(Strategy):
         self._daily_pnl_date: str = ""
         self._daily_loss_limit: float = self.config.daily_loss_limit  # Stop trading if daily loss exceeds this
         self._daily_loss_breached: bool = False  # Permanently stops trading until next day
+        self._sports_daily_pnl: float = 0.0
+        self._sports_daily_pnl_date: str = ""
+        self._sports_daily_loss_breached: bool = False
         self._pending_whales: dict[str, dict] = {}  # client_order_id -> {whale_name, market_title, category}
         self._last_exit_time: dict[str, float] = {}  # inst_id -> timestamp (re-entry cooldown)
         self._last_resolution_check: dict[str, float] = {}  # inst_id -> timestamp (rate-limit API calls)
@@ -242,6 +250,7 @@ class WhaleFollower(Strategy):
         self._whale_tiering: WhaleTiering | None = None
 
     def on_start(self) -> None:
+        self._sports_daily_pnl: float = 0.0
         if not self.config.instrument_ids:
             self.log.error("No instrument_ids configured")
             self.stop()
@@ -823,6 +832,14 @@ class WhaleFollower(Strategy):
             )
             return
 
+        # REJECT: single-team winner markets (sports bias pattern)
+        mc = getattr(signal, 'market_category', '') or ''
+        if mc.lower() == 'sports':
+            title = getattr(signal, 'market_title', '') or ''
+            if any(p in title for p in SINGLE_TEAM_PATTERNS):
+                self.log.info(f"REJECT single-team sports market: {title[:60]} | {signal.whale_name}")
+                return
+
         # Apply tier-based position sizing
         if self._whale_tiering:
             tier_kelly = self._whale_tiering.apply_overrides(
@@ -854,6 +871,20 @@ class WhaleFollower(Strategy):
                 self._daily_pnl
             )
             return
+
+        # Sports daily loss breach check
+        mc = getattr(signal, 'market_category', '') or ''
+        if mc.lower() == 'sports' and self._sports_daily_loss_breached:
+            self.log.warning(
+                "Sports daily loss limit breached, skipping sports signal execution"
+            )
+            return
+
+        # Sports-specific daily loss limit
+        if mc.lower() == 'sports' and hasattr(self, '_sports_daily_pnl'):
+            if self._sports_daily_pnl <= -SPORTS_DAILY_LOSS_LIMIT:
+                self.log.info(f"Sports daily loss limit breached (-${SPORTS_DAILY_LOSS_LIMIT}), skipping sports signal")
+                return
 
         # Dynamic subscription: every signal is processed regardless of pre-subscribed markets.
         # The sandbox execution client has been patched to auto-fill any instrument,
@@ -997,7 +1028,7 @@ class WhaleFollower(Strategy):
         # Kelly sizing with dynamic whale win rate (edge_score calibrated)
         # Pass available_balance so effective bankroll = min(config, available)
         # This prevents AccountBalanceNegative by auto-shrinking position sizes
-        size_usd = self._kelly_size(price, whale_win_rate=whale_win_rate, edge_score=edge_score, available_balance=available)
+        size_usd = self._kelly_size(price, whale_win_rate=whale_win_rate, edge_score=edge_score, available_balance=available, market_category=market_category)
         if size_usd <= 0:
             wr_note = f" (whale_wr={whale_win_rate:.0%})" if whale_win_rate else " (fixed_wr=55%)"
             self.log.info(f"No Kelly edge{wr_note}, skipping")
@@ -1243,6 +1274,11 @@ class WhaleFollower(Strategy):
         # Update daily P&L
         self._daily_pnl += realized_pnl
         
+        # Update sports daily P&L if sports position
+        category = pos_info.get('category', '') or ''
+        if category.lower() == 'sports':
+            self._sports_daily_pnl += realized_pnl
+        
         pnl_sign = "+" if realized_pnl >= 0 else ""
         self.log.info(
             f"EXIT {exit_reason}: {qty:.0f} shrs @ ${exit_price:.4f} | "
@@ -1473,6 +1509,9 @@ class WhaleFollower(Strategy):
             self._daily_pnl = 0.0
             self._daily_pnl_date = today
             self._daily_loss_breached = False  # Reset breach flag for new day
+            self._sports_daily_pnl = 0.0
+            self._sports_daily_pnl_date = today
+            self._sports_daily_loss_breached = False
             return
 
         if self._daily_loss_breached:
@@ -1484,6 +1523,17 @@ class WhaleFollower(Strategy):
                 f"Closing all positions and stopping auto-trade."
             )
             self._daily_loss_breached = True
+            self.exit_all_positions()
+
+        if self._sports_daily_loss_breached:
+            return
+
+        if self._sports_daily_pnl <= -self.config.sports_daily_loss_limit:
+            self.log.error(
+                f"SPORTS DAILY LOSS LIMIT BREACHED: ${self._sports_daily_pnl:,.2f} / -${self.config.sports_daily_loss_limit:,.2f}. "
+                f"Closing all positions and stopping auto-trade."
+            )
+            self._sports_daily_loss_breached = True
             self.exit_all_positions()
 
     def _on_exit_timer(self, timer_name: str = None) -> None:
@@ -1725,7 +1775,7 @@ class WhaleFollower(Strategy):
         
         return size_usd  # tier1: full Kelly size
 
-    def _kelly_size(self, price: float, whale_win_rate: float | None = None, edge_score: float = 0.0, available_balance: float | None = None) -> float:
+    def _kelly_size(self, price: float, whale_win_rate: float | None = None, edge_score: float = 0.0, available_balance: float | None = None, market_category: str = '') -> float:
         """Kelly criterion position sizing with edge_score calibration.
 
         Uses whale's actual historical win rate if available,
@@ -1752,6 +1802,10 @@ class WhaleFollower(Strategy):
         kelly = (b * p - q) / b
         if kelly <= 0:
             return 0.0
+
+        # Apply sports market Kelly multiplier
+        if market_category == 'sports':
+            kelly *= SPORTS_KELLY_MULTIPLIER
 
         # Base fractional Kelly from config
         base_size = effective_bankroll * kelly * self.config.kelly_fraction
