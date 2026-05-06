@@ -105,21 +105,23 @@ OUTPUT (JSON only):
     
     # FIXED: Better thinking prefix handling for Qwen models
     cleaned = llm_out
-    # Strip Qwen thinking markers (֎ and similar)
-    thinking_patterns = [
-        r'^֎.*?\n',  # Qwen thinking marker
-        r"^Here's a thinking process:.*?\n",
-        r"^Let me think about this:.*?\n",
-        r"^I'll analyze.*?\n",
-        r'<think>.*?</think>',  # Full think tags
-        r'<think>',  # Also handle bare opening tag
-        r'</think>',  # Or bare closing tag
-        r'^\xe2\x97\x8e.*?\n',  # Unicode thinking marker
-    ]
-    for pattern in thinking_patterns:
-        cleaned = re.sub(pattern, '', cleaned, flags=re.DOTALL)
+    # Strip thinking markers
+    cleaned = llm_out
+    # Remove think tags (both bare and paired)
+    cleaned = re.sub(r'<think>', '', cleaned)
+    cleaned = re.sub(r'</think>', '', cleaned)
     
-    # Find first { and last }
+    # Strip known thinking prefixes
+    for prefix in [
+        "Here's a thinking process:",
+        "Let me think about this:",
+        "I'll analyze",
+        "Okay, let me",
+    ]:
+        if prefix in cleaned:
+            cleaned = cleaned.split(prefix, 1)[-1]
+    
+    # Find the LAST JSON object ({...}) — that's the structured output
     json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
     if json_match:
         try:
