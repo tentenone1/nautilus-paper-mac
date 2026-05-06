@@ -1,13 +1,13 @@
 {
-  "prev_open_count": 7,
+  "prev_open_count": 8,
   "stall_start": null,
   "last_gap_alert": 1778039401.6799695,
   "last_stall_alert": 1778035203.6151984,
   "consecutive_gaps": 0,
   "schema_version": 1,
-  "recent_signals": 26,
-  "latest_signal": "2026-05-06T04:21:53.984975+00:00",
-  "recent_trades": 3,
-  "latest_trade": "2026-05-06 04:24:53.126160+00:00",
-  "open_trade_count": 7
+  "recent_signals": 27,
+  "latest_signal": "2026-05-06T05:01:47.145229+00:00",
+  "recent_trades": 2,
+  "latest_trade": "2026-05-06 04:50:33.966275+00:00",
+  "open_trade_count": 8
 }
