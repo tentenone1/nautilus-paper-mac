@@ -168,8 +168,10 @@ Be direct. No disclaimers."""
     
     # Extract JSON from model output (handle <think> tags and CoT prefix)
     cleaned = result
-    # Remove think tags
+    # Remove think tags (including bare opening without closing)
     cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r"<think>", "", cleaned)
+    cleaned = re.sub(r"</think>", "", cleaned)
     # Strip thinking process prefix  
     for prefix in ["Here's a thinking process:", "Let me think", "I'll analyze", "Okay, let me"]:
         if prefix in cleaned:

@@ -33,6 +33,7 @@ KNOWN_WALLETS = {
 LOW_PRICE_THRESHOLD = 0.30  # Entry below this = potential signal
 PUMP_THRESHOLD = 0.50  # 50%+ price move from first entry
 FOLLOW_WINDOW_SECS = 300  # 5 min between entries = follow pattern
+NOISE_KEYWORDS = ["highest temperature", "bitcoin up or down", "ethereum up or down", "solana up or down", "weather"]
 
 
 def fetch_json(url: str, timeout: int = 10):
@@ -97,7 +98,7 @@ def main():
                 print(f"  Known whale detected: {KNOWN_WALLETS[wallet]} on {t.get('title','?')[:40]}", flush=True)
         
         # 2. Detect signal patterns — filter out noise
-        NOISE_PATTERNS = ["highest temperature", "Bitcoin Up or Down", "Will ", " win on "]
+        NOISE_PATTERNS = ["highest temperature", "Bitcoin Up or Down", "Ethereum Up or Down", "Solana Up or Down", "Will ", " win on "]
         for cid, m in markets.items():
             title_lower = m["title"].lower()
             if any(p in title_lower for p in NOISE_PATTERNS):

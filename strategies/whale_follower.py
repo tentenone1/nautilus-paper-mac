@@ -856,8 +856,16 @@ class WhaleFollower(Strategy):
         mc = getattr(signal, 'market_category', '') or ''
         if mc.lower() == 'sports':
             title = getattr(signal, 'market_title', '') or ''
-            if not any(re.search(p, title, re.IGNORECASE) for p in SPORTS_WHITELIST_PATTERNS):
-                self.log.info(f"REJECT non-whitelisted sports market: {title[:60]} | {signal.whale_name}")
+            if any(re.search(p, title, re.IGNORECASE) for p in SPORTS_WHITELIST_PATTERNS):
+                self.log.info(f"ALLOW Spread: {title[:60]}")
+            elif any(re.search(p, title, re.IGNORECASE) for p in SPORTS_OU_BLACKLIST_PATTERNS):
+                self.log.info(f"REJECT O/U: {title[:60]}")
+                return
+            elif any(re.search(p, title, re.IGNORECASE) for p in SPORTS_VS_BLACKLIST_PATTERNS):
+                self.log.info(f"REJECT vs: {title[:60]}")
+                return
+            elif any(p in title for p in SINGLE_TEAM_PATTERNS):
+                self.log.info(f"REJECT single-team: {title[:60]}")
                 return
 
         # Apply tier-based position sizing

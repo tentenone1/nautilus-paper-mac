@@ -8,12 +8,14 @@ Pipeline:
 4. Outputs trade card: BUY/WAIT/SKIP with entry, target, stop, Kelly
 
 Output: research/trade_recommendations.json
+FIXED: max_tokens increased from 600 to 1200, better thinking prefix handling
 """
 
 import json
 import urllib.request
 import time
 import os
+import re
 from datetime import datetime, timezone
 
 STATE_FILE = "/home/elon-1/workspace/nautilus-trading/research/signal_monitor_state.json"
@@ -24,8 +26,7 @@ LLM_MODEL = "qwen3.6-35b-a3b-uncensored-hauhaucs-aggressive"
 CLOB_MIDPOINT_URL = "https://clob.polymarket.com/midpoint?token_id={}"
 MARKETS_API = "https://data-api.polymarket.com/markets?conditionId={}&limit=1"
 
-# Noise markets to skip
-NOISE_TITLES = ["highest temperature", "Bitcoin Up or Down"]
+NOISE_TITLES = ["highest temperature", "Bitcoin Up or Down", "Ethereum Up or Down", "Solana Up or Down"]
 NOISE_CONDITIONS = set()  # Populated from previous runs
 
 
@@ -36,7 +37,7 @@ def query_llm(prompt: str) -> str:
             {"role": "system", "content": "You are a Polymarket trading analyst. Output ONLY valid JSON. Do NOT include any reasoning, thinking, or explanation. Just the JSON object."},
             {"role": "user", "content": prompt}
         ],
-        "max_tokens": 600,
+        "max_tokens": 1200,  # FIXED: increased from 600 to allow full JSON output
         "temperature": 0.1,
     }).encode()
     try:
@@ -61,7 +62,6 @@ def fetch_json(url: str, timeout: int = 10):
 
 
 def get_market_info(condition_id: str) -> dict | None:
-    """Get live market info from Polymarket API."""
     data = fetch_json(MARKETS_API.format(condition_id))
     if data and len(data) > 0:
         return data[0]
@@ -69,14 +69,10 @@ def get_market_info(condition_id: str) -> dict | None:
 
 
 def check_midpoint(condition_id: str) -> float | None:
-    """Get CLOB midpoint price for a market."""
-    # For now return None — need token_id which varies per market
-    # This is a placeholder for Phase 2 midpoint tracking
     return None
 
 
 def analyze_market(detection: dict, market_info: dict = None) -> dict:
-    """Run uncensored LLM analysis on a detection and return trade card."""
     market = detection.get("market", "Unknown")
     price = detection.get("lowest_price", 0.5)
     age = detection.get("age_seconds", 0)
@@ -107,46 +103,69 @@ OUTPUT (JSON only):
     
     llm_out = query_llm(prompt)
     
-    # Parse JSON from LLM output — must handle reasoning model's CoT prefix
-    import re
-    # Strip thinking process prefix
+    # FIXED: Better thinking prefix handling for Qwen models
     cleaned = llm_out
-    for prefix in ["Here's a thinking process:", "Let me think about this:", "I'll analyze"]:
-        if prefix in cleaned:
-            cleaned = cleaned.split(prefix, 1)[-1]
+    # Strip Qwen thinking markers (֎ and similar)
+    thinking_patterns = [
+        r'^֎.*?\n',  # Qwen thinking marker
+        r"^Here's a thinking process:.*?\n",
+        r"^Let me think about this:.*?\n",
+        r"^I'll analyze.*?\n",
+        r'<think>.*?</think>',  # Full think tags
+        r'<think>',  # Also handle bare opening tag
+        r'</think>',  # Or bare closing tag
+        r'^\xe2\x97\x8e.*?\n',  # Unicode thinking marker
+    ]
+    for pattern in thinking_patterns:
+        cleaned = re.sub(pattern, '', cleaned, flags=re.DOTALL)
+    
     # Find first { and last }
-    json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
     if json_match:
         try:
             return json.loads(json_match.group(0))
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            # If JSON is incomplete, try to find a valid partial
+            partial = json_match.group(0)
+            if '"decision"' in partial and '"confidence"' in partial:
+                # Extract decision and confidence even if incomplete
+                decision_match = re.search(r'"decision":\s*"([^"]+)"', partial)
+                conf_match = re.search(r'"confidence":\s*([0-9.]+)', partial)
+                if decision_match and conf_match:
+                    return {
+                        "market": market,
+                        "decision": decision_match.group(1),
+                        "confidence": float(conf_match.group(1)),
+                        "reason": f"Partial parse (truncated): {partial[:80]}",
+                        "entry_price": price,
+                        "target_price": min(price * 1.5, 0.95),
+                        "stop_price": max(price * 0.9, 0.05),
+                        "kelly_fraction": 0.1,
+                        "hold_hours": 24,
+                    }
     
     return {
         "market": market,
         "decision": "SKIP",
         "confidence": 0.0,
-        "reason": f"LLM parse failed: {llm_out[:100]}",
+        "reason": f"LLM parse failed: {llm_out[:150]}",
     }
 
 
 def main():
     print(f"[autoresearch] Starting at {datetime.now(timezone.utc).isoformat()}", flush=True)
     
-    # Load detections
     detections = []
     if os.path.exists(DETECTIONS_FILE):
         with open(DETECTIONS_FILE) as f:
             detections = json.load(f)
     
-    # Load existing recommendations
     existing = []
     if os.path.exists(OUTPUT_FILE):
         with open(OUTPUT_FILE) as f:
             existing = json.load(f)
     existing_markets = {r.get("market", "") for r in existing}
     
-    # Filter for new detections only
     new_detections = [d for d in detections if d.get("market", "") not in existing_markets]
     new_detections = [d for d in new_detections if not any(
         n in ((d.get("market", "") or "") + (d.get("title", "") or "")).lower() 
@@ -156,10 +175,9 @@ def main():
     print(f"[autoresearch] {len(new_detections)} new detections to analyze", flush=True)
     
     recommendations = []
-    for det in new_detections[-5:]:  # Max 5 per run (LLM cost)
+    for det in new_detections[-5:]:
         print(f"  Analyzing: {det.get('market', '?')[:50]}...", flush=True)
         
-        # Check if market is still live
         cid = det.get("condition_id", "")
         market_info = get_market_info(cid) if cid else None
         midpoint = check_midpoint(cid) if cid else None
@@ -174,17 +192,14 @@ def main():
         status = "🟢" if rec.get("decision") == "BUY" else ("🟡" if rec.get("decision") == "WAIT" else "⚫")
         print(f"  {status} {rec.get('decision', '?')} | {rec.get('confidence', 0):.0%} | {rec.get('reason', '')[:60]}", flush=True)
         
-        time.sleep(1)  # Rate limit between LLM calls
+        time.sleep(1)
     
-    # Merge with existing
     all_recs = existing + recommendations
-    # Keep last 50
     all_recs = all_recs[-50:]
     
     with open(OUTPUT_FILE, "w") as f:
         json.dump(all_recs, f, indent=2)
     
-    # Print summary
     buys = sum(1 for r in recommendations if r.get("decision") == "BUY")
     print(f"\n[autoresearch] Complete. {len(recommendations)} analyzed → {buys} BUY signals", flush=True)
 
