@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 STATE_FILE = "/home/elon-1/workspace/nautilus-trading/research/signal_monitor_state.json"
 DETECTIONS_FILE = "/home/elon-1/workspace/nautilus-trading/research/signal_detections.json"
 OUTPUT_FILE = "/home/elon-1/workspace/nautilus-trading/research/trade_recommendations.json"
-LLM_URL = "http://192.168.50.148:1234/v1/chat/completions"
+LLM_URL = "http://127.0.0.1:8080/v1/chat/completions"
 LLM_MODEL = "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ2_M.gguf"
 CLOB_MIDPOINT_URL = "https://clob.polymarket.com/midpoint?token_id={}"
 MARKETS_API = "https://data-api.polymarket.com/markets?conditionId={}&limit=1"

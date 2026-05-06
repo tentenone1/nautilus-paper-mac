@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db"
 BACKUP_DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db.backup-20260506"
 OUTPUT_PATH = "/home/elon-1/workspace/nautilus-trading/research/jailbreak_analysis.json"
-LLM_URL = "http://192.168.50.148:1234/v1/chat/completions"
+LLM_URL = "http://127.0.0.1:8080/v1/chat/completions"
 LLM_MODEL = "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ2_M.gguf"
 MIN_TRADES = 5  # Minimum trades for analysis
 
