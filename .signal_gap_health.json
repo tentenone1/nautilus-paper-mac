@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-05-06T14:15:01.163252+00:00",
+  "timestamp": "2026-05-06T14:35:02.064332+00:00",
   "healthy": true,
   "status": "\u2705 HEALTHY",
   "checks": {
     "recent_trades_30m": 2,
-    "recent_signals_30m": 32,
+    "recent_signals_30m": 33,
     "open_trade_count": 13,
     "trades_last_hour": 2,
     "closes_last_hour": 0,
