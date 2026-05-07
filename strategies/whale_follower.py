@@ -1724,6 +1724,9 @@ class WhaleFollower(Strategy):
         # Autoresearch LLM signal bridge — check for model-generated trade recommendations
         self._check_autoresearch_signals()
         
+        # Sybil meta-whale signal bridge — check for sybil group fade/follow signals
+        self._check_sybil_signals()
+        
         # Memory pressure check - graceful restart before OOM
         try:
             with open("/proc/self/status") as f:
@@ -1833,6 +1836,73 @@ class WhaleFollower(Strategy):
                 self.log.info(f"Autoresearch signals: {processed} queued recommendations processed")
         except Exception as e:
             self.log.error(f"Autoresearch signal check failed: {e}")
+
+    def _check_sybil_signals(self) -> None:
+        """Poll sybil signal queue for meta-whale fade/follow recommendations."""
+        queue_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research", "sybil_signal_queue.json")
+        if not os.path.exists(queue_path):
+            return
+        try:
+            with open(queue_path) as f:
+                data = json.load(f)
+            signals = data.get("signals", []) if isinstance(data, dict) else []
+            if not signals:
+                return
+            # Clear the queue immediately to prevent re-processing on crash
+            with open(queue_path, "w") as f:
+                json.dump({"generated_at": "", "signal_count": 0, "signals": []}, f)
+            processed = 0
+            for s in signals:
+                # Map sybil signal side to whale_follower format
+                sybil_side = s.get("side", "BUY YES")
+                if "BUY YES" in sybil_side.upper():
+                    side = "buy"
+                    outcome = "Yes"
+                else:
+                    side = "buy"
+                    outcome = "No"
+                
+                # Compute suggested size from sybil signal data
+                exposure = s.get("total_exposure_usd", 0)
+                wallet_count = s.get("wallet_count", 1)
+                signal_type = s.get("signal_type", "")
+                
+                # Size by strategy: fade gets 10%, follow gets 20%, manipulation gets 5%
+                if signal_type == "no_bias_fade":
+                    size_pct = 0.10
+                elif signal_type == "concentrated_follow":
+                    size_pct = 0.20
+                elif signal_type == "manipulation_fade":
+                    size_pct = 0.05
+                else:
+                    size_pct = 0.10
+                suggested_size = min(exposure * size_pct, 5000)  # cap at $5K
+                
+                group_id = s.get("group_id", "unknown")
+                signal_obj = WhaleSignal(
+                    signal_type=WhaleSignalType.LARGE_POSITION,
+                    condition_id=s.get("condition_id", ""),
+                    token_id="",  # will be resolved by bridge
+                    outcome=outcome,
+                    side=side,
+                    confidence=s.get("confidence", 0.5),
+                    target_price=0.5,  # entry at market
+                    suggested_size_usd=suggested_size,
+                    whale_name=f"sybil_meta_{group_id}",
+                    whale_roi=0.0,
+                    timestamp=time.time(),
+                    reason=s.get("reason", f"Sybil {group_id} signal"),
+                    market_title=s.get("market_title", ""),
+                    market_category="",
+                    whale_address="",
+                    edge_score=s.get("confidence", 0.5) * 10,
+                )
+                self._on_signal(signal_obj)
+                processed += 1
+            if processed:
+                self.log.info(f"Sybil meta-whale signals: {processed} queued signals processed")
+        except Exception as e:
+            self.log.error(f"Sybil signal check failed: {e}")
 
     # ── Sports Market Detection (Track A) ─────────────────────────────────────
 
