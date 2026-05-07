@@ -26,7 +26,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RECS_FILE = os.path.join(BASE_DIR, "research", "trade_recommendations.json")
 QUEUE_FILE = os.path.join(BASE_DIR, "research", "autoresearch_signal_queue.json")
 STATE_FILE = os.path.join(BASE_DIR, "research", "autoresearch_bridge_state.json")
-CLOB_MARKET_URL = "https://clob.polymarket.com/market/{}"
+CLOB_MARKET_URL = "https://clob.polymarket.com/markets/{}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

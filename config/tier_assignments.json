@@ -1,0 +1,4202 @@
+{
+  "p1-0xb6d6e9": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 8788692.4,
+    "win_rate": 0.85,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "0x2a2C53bD278c04DA9962Fcf96490E17F3DfB9Bc1-1772479215461": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 3917815.417099002,
+    "win_rate": 0.05,
+    "classification": "market_maker",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p2-0x492442": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 2704162.3,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p3-0x8c80d2": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 2381058.6,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p4-0x93abbc": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 1721733.7,
+    "win_rate": 0.3,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p5-0x6ac5bb": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 1566945.7,
+    "win_rate": 0.18,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p6-0x777d9f": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 1499914.2,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "asdfjh": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 1200113.2062690002,
+    "win_rate": 0.84,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p7-0xc80756": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 1163640.0,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "0x5966Db1fE50763C9e3C014d756369BAd07E1F804-1777648534241": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 1150700.7727879998,
+    "win_rate": 0.59,
+    "classification": "mixed_entity",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p8-0xdb859a": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 790836.9,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "weflyhigh": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 773315.664335,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p9-0xa71093": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 671603.5,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p10-0x54d200": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 666999.7,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "Countryside": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 605369.875984,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p12-0x5bec79": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 591763.4,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "LaBradfordSmith22": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 576488.136236,
+    "win_rate": 0.71,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p13-0x0eedca": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 552726.2,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "MildredBK": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 551539.787912,
+    "win_rate": 0.25,
+    "classification": "market_maker",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Blueberry1337": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 539565.161191,
+    "win_rate": 0.18,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p14-0xdb15fb": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 513985.2,
+    "win_rate": 0.41,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p16-0x8f3c56": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 496309.9,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p17-0xabb899": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 482945.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Anointed-Connect": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 468177.934901,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "frankfrankfrank": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 463515.1242509999,
+    "win_rate": 0.3,
+    "classification": "market_maker",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p18-0x84cb17": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 445849.9,
+    "win_rate": 0.56,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p19-0xee00ba": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 425576.5,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p20-0x27b0f6": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 419816.0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p21-0xac2519": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 418956.5,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p22-0xd38ad2": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 403074.3,
+    "win_rate": 0.88,
+    "classification": "mixed_entity",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "Uzim000": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 370781.91500000004,
+    "win_rate": 0.53,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p25-0x3fd9a8": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 352519.3,
+    "win_rate": 0.47,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p26-0x1117ea": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 347981.3,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p27-0x6f8b28": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 335671.5,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p29-0x146703": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 333484.2,
+    "win_rate": 0.41,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "surfandturf": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 331402.091011,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "0xbd14b65383c15e0b0f64944ca000f9a2bc5dd62a": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 331131.048436,
+    "win_rate": 0.15,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Supah9ga": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 329581.519183,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p30-0x83d228": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 326097.8,
+    "win_rate": 0.5,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p32-0xe72bb5": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 321455.2,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p33-0x5c3a1a": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 317634.1,
+    "win_rate": 0.23,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p34-0x183f8b": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 315033.2,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p35-0x16bb99": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 300361.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p36-0x96dd86": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 296529.5,
+    "win_rate": 0.29,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p37-0xe5efd6": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 296462.0,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p38-0x418d51": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 280718.5,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p39-0xead152": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 269971.1,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "HongYunX": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 261150.762854,
+    "win_rate": 0.57,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p42-0xfc25f1": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 261107.2,
+    "win_rate": 0.64,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "0xd4aa6f8e91cfea29b66a48ebff52814": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 260061.20350200002,
+    "win_rate": 0.51,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "easypredict": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 248000.0,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p43-0xef504e": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 245623.2,
+    "win_rate": 0.33,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Sassy-Bucket": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 241560.044608,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "XingZeng": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 235312.90221,
+    "win_rate": 0.9,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p44-0xaa14ca": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 233745.4,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p45-0x54096e": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 233309.8,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p46-0x49007e": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 226263.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "bossoskil1": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 218984.43214199998,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p48-0x0c0e27": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 216435.5,
+    "win_rate": 0.55,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p49-0x014c4e": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 215981.4,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p50-0x65b9e2": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 192553.2,
+    "win_rate": 0.93,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p51-0x31864f": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 191253.3,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p52-0xe96fb5": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 186719.6,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p53-0x45e40d": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 181289.0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p54-0x4fc8ad": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 181125.1,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p55-0xefddbb": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 176984.0,
+    "win_rate": 0.51,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "0xCb6Ed9332A8FD1b930893c705dd234f37aa248E6-1774405511911": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 172248.22,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p56-0x204e14": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 172021.0,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p57-0xa1e49d": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 171942.7,
+    "win_rate": 0.17,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p58-0xd776f0": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 171038.2,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "Latina": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 169344.69,
+    "win_rate": 0.71,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p59-0xecaa88": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 167624.2,
+    "win_rate": 0.45,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p60-0x162f6f": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 167231.5,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p61-0xb31e41": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 157668.0,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p62-0x86fbea": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 156151.2,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p63-0xf5f929": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 155351.5,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p64-0xbaa2bc": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 155075.8,
+    "win_rate": 0.26,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "BoerAc": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 154263.475729,
+    "win_rate": 0.74,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p65-0x0e1d01": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 153682.2,
+    "win_rate": 0.53,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p66-0x275976": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 151422.0,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p67-0x6db568": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 150057.2,
+    "win_rate": 0.15,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p68-0x38337d": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 149288.5,
+    "win_rate": 0.64,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p69-0x153a91": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 146819.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p70-0x92672c": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 146471.4,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p71-0x88c491": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 139974.0,
+    "win_rate": 0.56,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p72-0x39d3c7": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 138219.0,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p73-0x23073a": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 137013.4,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p74-0x38f0b7": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 135660.1,
+    "win_rate": 0.46,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p75-0xacb206": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 133177.2,
+    "win_rate": 0.64,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "EomJunsik": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 132810.209429,
+    "win_rate": 0.42,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p76-0xe26cac": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 131850.2,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p77-0x45d6e7": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 131679.4,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "NRASCHATTER": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 131545.933175,
+    "win_rate": 0.51,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p78-0x3af1ed": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 131350.8,
+    "win_rate": 0.19,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "anoin123": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 131300.0,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p79-0x955310": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 130735.5,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p80-0x7f9e2d": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 127454.7,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "VPenguin": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 126769.79156099999,
+    "win_rate": 0.35,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p81-0xdb2223": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 124670.5,
+    "win_rate": 0.69,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p82-0x19e27e": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 121371.6,
+    "win_rate": 0.64,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p83-0x2a91d1": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 119850.8,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p84-0x955e15": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 119097.0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p85-0x30c7ac": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 118926.4,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p86-0x1b4e0c": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 111402.9,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p87-0xc8ab97": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 110249.0,
+    "win_rate": 0.03,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "KaneAnalytics": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 109318.472837,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "ieuei31": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 108464.32626999999,
+    "win_rate": 0.47,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p88-0x23c8a4": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 106497.8,
+    "win_rate": 0.32,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Swooferdeluxe": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 105293.0,
+    "win_rate": 0.62,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p89-0xfe787d": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 105224.0,
+    "win_rate": 0.32,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p90-0xa1d02d": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 102361.9,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p91-0xd48a81": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 102304.8,
+    "win_rate": 0.43,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "SMCAOMCRL": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 100790.135357,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "wigglew": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 100061.91,
+    "win_rate": 0.95,
+    "classification": "mixed_entity",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "SemyonMarmeladov": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 99999.992579,
+    "win_rate": 0.61,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p92-0x997d42": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 97821.2,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p93-0x3450a5": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 97322.5,
+    "win_rate": 0.89,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p94-0xbb16da": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 95243.0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "bcda": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 94855.485178,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "Jdhdhduu": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 94836.85697000002,
+    "win_rate": 0.6,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p95-0xd4dafa": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 94679.2,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p96-0xcb23de": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 93123.8,
+    "win_rate": 0,
+    "classification": "market_maker",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p97-0xd6d3a3": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 93003.6,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p98-0x1f813b": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 92758.8,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p99-0xdaef2b": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 91584.9,
+    "win_rate": 0.33,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p100-0x20d643": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 91309.7,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p101-0x594edb": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 91274.0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p102-0xf68a28": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 90116.6,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "covidjsi": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 88842.55088299999,
+    "win_rate": 0.94,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p103-0xc0ff6a": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 87438.7,
+    "win_rate": 0.31,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p104-0x607510": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 83707.9,
+    "win_rate": 0.35,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p105-0xcd2148": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 82774.0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p106-0x9a4cf0": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 81548.9,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p107-0x19254b": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 80498.9,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p108-0x9eca63": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 79584.0,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p109-0x8e8ccd": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 77944.0,
+    "win_rate": 0.32,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p110-0x4beccb": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 77729.2,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p111-0xe7a205": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 76841.2,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p112-0xafd492": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 76800.7,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p113-0xaca58a": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 76322.3,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "lu1zzz": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 76315.0,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p114-0x1de39f": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 74946.5,
+    "win_rate": 0.19,
+    "classification": "mixed_entity",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p115-0xd344f3": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 74529.2,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "0x2a2C53bD278c04DA9962Fcf96490E17F3DfB9B": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 73772.19,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p116-0xfea31b": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 72471.1,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "TutiFromFactsOfLife": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 72056.629823,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p117-0xc41d73": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 71441.2,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p118-0x8c1470": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 71002.3,
+    "win_rate": 0,
+    "classification": "mixed_entity",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p119-0xd5da05": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 70804.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p120-0x6a72f6": {
+    "capital_tier": "A",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 70416.9,
+    "win_rate": 0.54,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p121-0x64e93f": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 70140.2,
+    "win_rate": 0.94,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p122-0x10fc6c": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 70055.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p123-0xb8c448": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 69582.0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p124-0xe3c9c8": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 69402.0,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p125-0xa1b3fa": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 68168.9,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p126-0x3c3ff2": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 68002.7,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p127-0x9770ca": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 67106.2,
+    "win_rate": 0.4,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p128-0x9dcaed": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 64348.9,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p129-0xefcb3d": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 63630.2,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p130-0xce71be": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 63178.5,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p131-0x03bac2": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 62576.7,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p132-0xeac7cd": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 61623.4,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p133-0xddcc48": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 61350.1,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "rustin": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 60024.941234000005,
+    "win_rate": 0.68,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p134-0xf5e15d": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 59155.9,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p135-0x002f98": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 58614.5,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p136-0x230287": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 57570.7,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p137-0x681504": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 55533.9,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "Cinibengales": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 54412.491000999995,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "anFoid": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 53543.428026,
+    "win_rate": 0.94,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "NonceChaser": {
+    "capital_tier": "A",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 52581.888155,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p139-0x82ff01": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 52200.1,
+    "win_rate": 0.41,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p140-0x160bf4": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 52096.9,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p141-0x38e29d": {
+    "capital_tier": "A",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 51859.5,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p142-0xd1001f": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 46471.6,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p143-0x44c581": {
+    "capital_tier": "B",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 46081.7,
+    "win_rate": 0.57,
+    "classification": "skilled_human",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p144-0xc4f8b9": {
+    "capital_tier": "B",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 45584.9,
+    "win_rate": 0.59,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p145-0x4a5da5": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 45460.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p146-0x6eb81a": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 44596.6,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p147-0x011f2d": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 44105.1,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "jtwyslljy": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 43300.0,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p148-0x1fd314": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 42559.5,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p149-0x6e0254": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 42333.5,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Pajamapants": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 41461.43,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p150-0xba389f": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 41158.3,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p151-0x143661": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 40879.4,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "How.Dare.You": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 40730.25084300001,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "Drose32": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 39623.635451,
+    "win_rate": 0.95,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p152-0x1d24e4": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 38882.8,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p153-0x469f85": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 38528.9,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p154-0xf705fa": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 37689.1,
+    "win_rate": 0.24,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p155-0xa5f61c": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 36185.0,
+    "win_rate": 0.83,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p156-0x50a918": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 35592.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p157-0xd88871": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 35133.1,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p158-0x5c7ae9": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 33966.4,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p159-0x3f3aa7": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 33374.0,
+    "win_rate": 0.29,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p160-0x198fa7": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 33121.8,
+    "win_rate": 0.4,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p161-0xf7d6de": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 31631.7,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p162-0x9f4c5e": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 31386.1,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p163-0x3d85c7": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 30869.4,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p164-0xde9f7f": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 29966.4,
+    "win_rate": 0,
+    "classification": "mixed_entity",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p165-0x0d1699": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 28283.4,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p166-0xbca08c": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 28246.1,
+    "win_rate": 0.65,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "alwaysfade": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 27772.103371,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p167-0x033f03": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 27025.2,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p168-0x204f72": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 26508.1,
+    "win_rate": 0.19,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p169-0x47123a": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 26227.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p170-0x9dcc1d": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 26154.8,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p171-0xe5f0ae": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 25326.8,
+    "win_rate": 0.74,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p172-0xea68d3": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 25078.0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p173-0x06dc51": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 24913.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p174-0xed107a": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 24500.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p175-0x1b5a41": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 23103.5,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p176-0x2b7d7a": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 23056.6,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p177-0x7c5922": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 22986.7,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p178-0x17e91d": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 22913.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p179-0xafc5ec": {
+    "capital_tier": "B",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 22356.3,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p180-0x4c353d": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 22208.1,
+    "win_rate": 0.87,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p181-0x9236b3": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 21765.1,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p182-0xcddfe6": {
+    "capital_tier": "B",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 1.0,
+    "volume": 21294.2,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "mooseborzoi": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 19996.9,
+    "win_rate": 0.45,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p183-0x437961": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 19378.1,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p184-0x0e64bd": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 19150.9,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p185-0x1b110b": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 18922.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p186-0xdeca32": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 18374.5,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p187-0x1b47e9": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 18120.2,
+    "win_rate": 0.89,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p188-0x32ed51": {
+    "capital_tier": "C",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 17665.0,
+    "win_rate": 0.61,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p189-0x4d9c68": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 16499.1,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "0xcF609D3256f0f37f0595E5Dc64012Fa3a8fEa6f5-1771809916847": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 16260.28434,
+    "win_rate": 0.95,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p190-0xee8e24": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 16243.4,
+    "win_rate": 0.68,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p191-0x652c9e": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 16214.9,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "bin8888": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 15800.0,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p192-0xf2c0a9": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 15201.8,
+    "win_rate": 0.1,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p193-0x26fcae": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 15104.4,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p194-0x9d25c8": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 15070.6,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p195-0x9ec29e": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 14870.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p196-0xa74b4d": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 14389.2,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p197-0xa2dccd": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 13840.9,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p198-0x98e3d7": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 13587.3,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p199-0xfb8aec": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 13583.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "redskinrick": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 13468.267796,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p200-0x7ea571": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 13404.8,
+    "win_rate": 0.19,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p201-0x73b9f5": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 13313.3,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p202-0x195389": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 12661.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p203-0xe6ac4d": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 12012.5,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p204-0x8740bd": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 11677.6,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p205-0x9a7638": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 11552.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p206-0x537576": {
+    "capital_tier": "C",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 11216.2,
+    "win_rate": 0.5,
+    "classification": "mixed_entity",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p207-0x98db8c": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 10960.1,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p208-0x55cafb": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 10803.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p209-0x9d94f6": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 10277.4,
+    "win_rate": 0.17,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p210-0x1a967b": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 9896.3,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p211-0x82470c": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 9878.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p212-0x531b6a": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 9849.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p213-0x3748e8": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 9683.4,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p214-0xbb388b": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 9647.4,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p215-0xa80627": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 9522.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p216-0x705307": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 8968.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "loitterer": {
+    "capital_tier": "C",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 8628.39,
+    "win_rate": 0.5,
+    "classification": "market_maker",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p217-0x963f6c": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 8490.5,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p218-0x8f8c0e": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 8415.8,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p219-0xcfb103": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 7467.4,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p220-0x904ed7": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 7390.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p221-0x1a667f": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 7324.1,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p222-0xd604ab": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 7315.4,
+    "win_rate": 0.92,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p223-0xfb669f": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 7168.8,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p224-0xb55fa1": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 7152.2,
+    "win_rate": 0,
+    "classification": "market_maker",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p225-0x6e1d50": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 7101.3,
+    "win_rate": 0.19,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p226-0xf37065": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 6965.9,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p227-0xd1ed12": {
+    "capital_tier": "C",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 6740.3,
+    "win_rate": 0.6,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p228-0xc387c2": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 6646.5,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p229-0x5abed7": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 6596.1,
+    "win_rate": 0,
+    "classification": "mixed_entity",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p230-0x8d1d5d": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 6317.6,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p231-0xbc3ee0": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 6314.6,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p232-0xd10695": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 6268.7,
+    "win_rate": 0.95,
+    "classification": "market_maker",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p233-0x5d1d9c": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 6118.2,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "beetlepimp": {
+    "capital_tier": "C",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 5791.25,
+    "win_rate": 0.5,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p234-0x33ab02": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 5654.2,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p235-0xe8dd77": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 5441.4,
+    "win_rate": 0.29,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p236-0xce25e2": {
+    "capital_tier": "C",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 5222.1,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "RJW1": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 5197.364471,
+    "win_rate": 0.95,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p237-0x384fdc": {
+    "capital_tier": "C",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 5012.1,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p238-0xe91171": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 4967.3,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Wannac": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 4937.515829,
+    "win_rate": 0.95,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p239-0x2005d1": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 4851.7,
+    "win_rate": 0.05,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p240-0xe9076a": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 4674.6,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p241-0x58ae6c": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 4293.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p242-0x507e52": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 4207.1,
+    "win_rate": 0.03,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p243-0xb12d4f": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 3890.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "0x60AEB5eCf3CDc08767792135CdA51aa0d3a01399-1777197077106": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 3860.0000000000005,
+    "win_rate": 0.95,
+    "classification": "degenerate_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p244-0x3de454": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 3731.8,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p245-0x27c7fb": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 3718.1,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p246-0xcbba64": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 3659.5,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "ic4cream": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 2807.0,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p248-0x20d230": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 2554.3,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p249-0xed7a9b": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 2457.9,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p250-0xeebde7": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 2341.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p251-0xd218e4": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 2317.4,
+    "win_rate": 0.24,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p252-0x1df231": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 1924.6,
+    "win_rate": 0.33,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p253-0x8fe730": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 1837.6,
+    "win_rate": 0,
+    "classification": "mixed_entity",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p254-0x58b57e": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 1796.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p256-0xcd91a5": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 1347.8,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p257-0x681469": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 1221.6,
+    "win_rate": 0.06,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p258-0x84ad9c": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 1218.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p259-0xae2e04": {
+    "capital_tier": "D",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 1170.2,
+    "win_rate": 0.53,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "orangexyz": {
+    "capital_tier": "D",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 1168.4986,
+    "win_rate": 0.95,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p260-0x0346af": {
+    "capital_tier": "D",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 1099.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p261-0x8fe909": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 970.8,
+    "win_rate": 0,
+    "classification": "mixed_entity",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p263-0xec1550": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 630.9,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p264-0x32ccd9": {
+    "capital_tier": "E",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 434.5,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "Soarin22": {
+    "capital_tier": "E",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 413.2,
+    "win_rate": 0.95,
+    "classification": "trading_bot",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p265-0x558f2f": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 354.1,
+    "win_rate": 0,
+    "classification": "mixed_entity",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p266-0x337b7f": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 275.1,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p267-0x3b5a52": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 222.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p268-0x5947c5": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 193.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p269-0x063723": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 192.9,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p270-0xe28fee": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 177.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p271-0xe3726a": {
+    "capital_tier": "E",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 173.2,
+    "win_rate": 0.62,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p272-0x2c6927": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 171.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p273-0x9412cd": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 170.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p274-0x60889a": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 166.5,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p275-0x6e58e4": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 163.5,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p276-0xf3531b": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 163.5,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p277-0x9152cc": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 156.3,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p278-0xa8ccda": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 151.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p279-0x476639": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 146.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p280-0xe0229e": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 146.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p281-0x1f19c4": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 143.5,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p282-0x2f32a0": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 136.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p283-0x5e2b92": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 131.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p284-0x75cc3b": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 128.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p285-0x712be8": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 127.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p286-0xb02188": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 118.1,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p287-0x1c4ee4": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 106.3,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p288-0xeaca59": {
+    "capital_tier": "E",
+    "precision_tier": "MEDIUM",
+    "kelly_multiplier": 0.5,
+    "volume": 101.3,
+    "win_rate": 0.59,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p289-0xdf6539": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 92.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p290-0x01b739": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 90.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p291-0xe48109": {
+    "capital_tier": "E",
+    "precision_tier": "HIGH",
+    "kelly_multiplier": 0.25,
+    "volume": 89.5,
+    "win_rate": 0.95,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p292-0xa8670e": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 88.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p293-0x409367": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 76.4,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p294-0xfda3e7": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 73.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p295-0x7a53d0": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 73.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p296-0x19cd34": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 50.5,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p297-0x76a1f5": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 48.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p298-0xf0de18": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 48.3,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p299-0x674887": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 36.9,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p300-0x645a91": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 36.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p301-0xca20c5": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 34.3,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p302-0x35e4be": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 32.7,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p303-0xfbcbd3": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 30.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p304-0x7399fe": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 25.7,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p305-0x197296": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 22.4,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p306-0x3c0357": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 21.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p307-0x6c6aef": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 20.5,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p308-0x25f470": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 16.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p309-0x7122e8": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 15.0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p310-0x530e44": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 13.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p311-0xdf3223": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 10.4,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p312-0x007b89": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 5.0,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p313-0xc90b20": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 4.9,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p314-0xd009ee": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 4.8,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p315-0x23d184": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 4.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p316-0xe43ff9": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 2.6,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "martingaleking": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "TTEST2": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "WangXingYu": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "mixed_entity",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "WestCoastWhale": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Steady-AD2B": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p317-0xeb8299": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p318-0x832913": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p319-0x002f98": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p320-0x160bf4": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p321-0xf7d6de": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p322-0x06dc51": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p323-0x4d9c68": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p324-0x204f72": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p325-0xdeca32": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p326-0x195389": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p327-0x1b5a41": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p328-0xde9f7f": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p329-0xe6ac4d": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p330-0x1a967b": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p331-0x9ec29e": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p334-0x98db8c": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p335-0x963f6c": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p338-0x27c7fb": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p340-0x9f4c5e": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p342-0x58ae6c": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p343-0xce25e2": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p344-0xfb8aec": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p345-0xe9076a": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p346-0x8d1d5d": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p347-0x20d230": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p349-0x84ad9c": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p350-0x26fcae": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p351-0x1b110b": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p352-0x33ab02": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "p354-0xddcc48": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "trading_bot",
+    "should_copy": false,
+    "should_fade": false
+  },
+  "Macro-Allocator-5BB0": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "Kingdmandan": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "Precision-Geo-8516": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "skilled_human",
+    "should_copy": true,
+    "should_fade": false
+  },
+  "p332-0x82470c": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p333-0xa80627": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p336-0x904ed7": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p337-0x705307": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p339-0xb55fa1": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p341-0xe91171": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p348-0x5abed7": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "p353-0x8fe730": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "0xada2005600dec949baf300f4c6120000bdb6eaab": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "High-Turnover-E4FF": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "justwins": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "0xada200001000ef00d07553cee7006808f895c6f1": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Churn-4967": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "EliteAthleteMentality": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "menghuan388": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "sacrificial_account",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Hugewinner": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "yesmamaok": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "AML": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  },
+  "Polarize98": {
+    "capital_tier": "E",
+    "precision_tier": "LOW",
+    "kelly_multiplier": 0.25,
+    "volume": 0,
+    "win_rate": 0,
+    "classification": "degenerate_human",
+    "should_copy": false,
+    "should_fade": true
+  }
+}

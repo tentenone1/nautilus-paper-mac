@@ -10,6 +10,7 @@ Replaces the old single-axis alpha_score system.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +28,26 @@ class WhaleTiering:
         if not self._config_path.is_absolute():
             self._config_path = Path(__file__).resolve().parent.parent / self._config_path
         self._config: dict[str, Any] = {}
-        self._whale_cache: dict[str, dict[str, Any]] = {}  # whale_name -> {capital_tier, precision_tier, ...}
+        self._whale_cache: dict[str, dict[str, Any]] = {}
+        self._tier_assignments: dict[str, dict[str, Any]] = {}
         self._load_config()
+        self._load_tier_assignments()
+
+    def _load_tier_assignments(self) -> None:
+        """Load persistent wallet-to-tier assignments from config/tier_assignments.json."""
+        ta_path = self._config_path.parent / "tier_assignments.json"
+        if ta_path.exists():
+            with open(ta_path) as f:
+                self._tier_assignments = json.load(f)
+            # Pre-populate cache from tier assignments
+            for name, tier_data in self._tier_assignments.items():
+                if name not in self._whale_cache:
+                    self._whale_cache[name] = {
+                        "capital_tier": tier_data.get("capital_tier", "E"),
+                        "precision_tier": tier_data.get("precision_tier", "LOW"),
+                        "kelly_multiplier": tier_data.get("kelly_multiplier", 0.5),
+                        "classification": tier_data.get("classification", "unknown"),
+                    }
 
     def _load_config(self) -> None:
         if self._config_path.exists():
@@ -92,6 +111,10 @@ class WhaleTiering:
         if cached:
             return self.get_dual_tier_config(cached["capital_tier"], cached["precision_tier"])
         return self._get_fallback_config()
+
+    def get_raw_cache(self, whale_name: str) -> dict[str, Any] | None:
+        """Return raw cached tier data (capital_tier, precision_tier, volume, win_rate)."""
+        return self._whale_cache.get(whale_name)
 
     # ── Backward Compat: Single-Axis (alpha_score) ─────────────────────
 
@@ -188,3 +211,138 @@ class WhaleTiering:
             "precision_tiers": self._config.get("precision_tiers", {}),
             "tier_matrix": self._config.get("tier_matrix", {}),
         }
+
+
+class WhaleIntelligence:
+    """Load and query whale intelligence data for signal filtering and Kelly adjustments."""
+
+    KELLY_MAP: dict[str, float] = {
+        "skilled_human": 1.25,
+        "trading_bot": 1.0,
+        "market_maker": 0.75,
+        "mixed_entity": 0.9,
+        "degenerate_human": 0.5,
+        "sacrificial_account": 0.0,
+    }
+
+    def __init__(self, db_path: str | None = None) -> None:
+        """Load whale intelligence from DB into memory cache."""
+        self._intel: dict[str, dict] = {}
+        if db_path is None:
+            base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            db_path = os.path.join(base, "pipeline", "data", "whale_discovery.db")
+        if not os.path.exists(db_path):
+            return
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            rows = conn.execute(
+                "SELECT name, classification, trust_score, should_copy, should_fade, volume, win_rate FROM whale_intelligence"
+            ).fetchall()
+            conn.close()
+            for r in rows:
+                self._intel[r[0]] = {
+                    "classification": r[1],
+                    "trust_score": r[2],
+                    "should_copy": bool(r[3]),
+                    "should_fade": bool(r[4]),
+                    "volume": r[5],
+                    "win_rate": r[6],
+                }
+        except Exception:
+            pass
+
+    def get(self, whale_name: str) -> dict | None:
+        """Return intelligence dict for a whale, or None if unknown."""
+        return self._intel.get(whale_name)
+
+    def is_known(self, whale_name: str) -> bool:
+        """Check if whale exists in intelligence database."""
+        return whale_name in self._intel
+
+    def should_hard_reject(self, whale_name: str) -> bool:
+        """Return True if this whale should be rejected as a sacrificial account."""
+        intel = self._intel.get(whale_name)
+        if not intel:
+            return False
+        return (
+            intel["classification"] == "sacrificial_account"
+            and intel["trust_score"] <= 3
+            and intel["should_fade"]
+        )
+
+    def should_fade(self, whale_name: str) -> dict | None:
+        """Return intel dict if whale should be faded, None otherwise.
+        
+        Fade candidates: should_fade=1 AND trust_score>3 AND classification != "sacrificial_account".
+        These are whales that should be traded against (inverted signals).
+        """
+        intel = self._intel.get(whale_name)
+        if not intel:
+            return None
+        if intel["classification"] == "sacrificial_account":
+            return None  # Hard-reject these, don't fade
+        if intel.get("should_fade") and intel.get("trust_score", 0) > 3:
+            return intel
+        return None
+
+    def get_follow_list(self, min_trust: float = 5.0, min_volume: float = 1000.0) -> list[dict]:
+        """Get dynamic whale following list based on intelligence data.
+
+        Replaces hardcoded follow list with selection from 420 classified profiles.
+
+        Args:
+            min_trust: Minimum trust score to include (default 5.0).
+            min_volume: Minimum volume to include (default 1000.0).
+
+        Returns:
+            List of dicts with name, classification, trust_score, volume, win_rate.
+            Excludes sacrificial_account and should_fade whales.
+        """
+        follow = []
+        for name, intel in self._intel.items():
+            if intel.get("classification") == "sacrificial_account":
+                continue
+            if intel.get("should_fade"):
+                continue
+            trust = intel.get("trust_score", 0) or 0
+            vol = intel.get("volume", 0) or 0
+            if trust >= min_trust and vol >= min_volume:
+                follow.append({
+                    "name": name,
+                    "classification": intel.get("classification", "unknown"),
+                    "trust_score": trust,
+                    "volume": vol,
+                    "win_rate": intel.get("win_rate", 0) or 0,
+                })
+        follow.sort(key=lambda x: x["trust_score"], reverse=True)
+        return follow
+
+    def kelly_multiplier(self, classification: str) -> float:
+        """Return Kelly multiplier for a given classification."""
+        return self.KELLY_MAP.get(classification, 1.0)
+
+    def bulk_cache_tiers(self, tiering: "WhaleTiering") -> int:
+        """Classify all loaded whales into dual-axis tiers and cache them in WhaleTiering.
+        Returns count of successfully cached whales."""
+        cached = 0
+        for name, intel in self._intel.items():
+            volume = intel.get("volume", 0) or 0
+            win_rate = intel.get("win_rate", 0) or 0
+            if volume > 0 and win_rate > 0:
+                tiering.cache_whale(name, volume, win_rate)
+                cached += 1
+        print(f"[WhaleIntelligence] Cached {cached}/{len(self._intel)} whales into dual-axis tiers")
+        return cached
+
+    def adjust_size(self, whale_name: str, size_usd: float) -> tuple[float, dict | None]:
+        """Apply classification-based Kelly multiplier to position size.
+        
+        Returns:
+            Tuple of (adjusted_size, intel_dict_or_None).
+        """
+        intel = self._intel.get(whale_name)
+        if not intel:
+            return size_usd, None
+        mult = self.kelly_multiplier(intel["classification"])
+        return round(size_usd * mult, 2), intel

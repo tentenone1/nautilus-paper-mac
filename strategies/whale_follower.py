@@ -35,7 +35,7 @@ from components.resolution_poller import ResolutionPoller
 from py_clob_client.constants import POLYGON
 from nautilus_trader.adapters.polymarket.common.parsing import parse_polymarket_instrument
 
-from strategies.whale_tiering import WhaleTiering
+from strategies.whale_tiering import WhaleTiering, WhaleIntelligence
 from strategies.whale_tracker_new import (
     WhaleIdentity,
     WhaleSignal,
@@ -252,6 +252,10 @@ class WhaleFollower(Strategy):
         self._open_positions: dict[str, dict] = {}  # str(inst_id) -> {whale_name, market_title, category, side, entry_price, size, entry_time, trade_id, condition_id}
         self._exited_positions: set[str] = set()  # Track exited instrument IDs to prevent duplicate exits
         self._whale_tiering: WhaleTiering | None = None
+        self._whale_intel: WhaleIntelligence | None = None
+        # Fade tracking
+        self._fade_positions: set[str] = set()  # Track active fade positions for concurrency limiting
+        self._fade_max_concurrent: int = 3  # Max concurrent fade trades
 
     def on_start(self) -> None:
         self._sports_daily_pnl: float = 0.0
@@ -276,6 +280,25 @@ class WhaleFollower(Strategy):
 
         # Initialize whale tiering
         self._whale_tiering = WhaleTiering()
+
+        # Load whale intelligence data
+        self._whale_intel = WhaleIntelligence()
+        self.log.info(f"Loaded {len(self._whale_intel._intel)} whale intelligence profiles")
+
+        # Cache all classified whales into dual-axis tier matrix
+        cached_count = self._whale_intel.bulk_cache_tiers(self._whale_tiering)
+        self.log.info(f"Tier cache: {cached_count} whales assigned to dual-axis capital×precision matrix")
+
+        # Augment blacklist from whale intelligence: should_fade + trust <= 2
+        self._intel_blacklist: set[str] = set()
+        if self._whale_intel:
+            self._intel_blacklist = {
+                name for name in self._whale_intel._intel
+                if self._whale_intel._intel[name]["should_fade"]
+                and self._whale_intel._intel[name]["trust_score"] <= 2
+            }
+            if self._intel_blacklist:
+                self.log.info(f"Intel blacklist: {len(self._intel_blacklist)} whales from intelligence data")
 
         # Initialize resolution poller for real P&L tracking
         self._resolution_poller = ResolutionPoller()
@@ -644,6 +667,12 @@ class WhaleFollower(Strategy):
                 "kelly_fraction": kelly_fraction,
             }
 
+            # Track fade positions for concurrency limiting
+            if pending.get("is_fade", False):
+                inst_key = str(event.instrument_id)
+                self._fade_positions.add(inst_key)
+                self.log.info(f"FADE position opened: {whale_name} | {inst_key[:50]}... ({len(self._fade_positions)}/{self._fade_max_concurrent})")
+
             # ── Price Pump Tracking Hook ────────────────────────────────────────
             # Subscribe this market to price pump monitoring so that price
             # movements after the whale's entry can be tracked.
@@ -777,6 +806,11 @@ class WhaleFollower(Strategy):
         price = getattr(signal, "target_price", 0.5) or 0.5
         category = getattr(signal, "market_category", "") or ""
         prompt = "Score this Polymarket signal 1-10. " +             f"Market: {market[:80]}. Whale: {whale[:30]}. " +             f"Side: {side} at {price:.3f}. Category: {category}."
+        # Inject whale intelligence context if available
+        if self._whale_intel:
+            intel = self._whale_intel.get(signal.whale_name)
+            if intel:
+                prompt += f" Classification: {intel['classification']}, Trust: {intel['trust_score']}/10."
         if whale in ("unknown", "unknown whale", ""):
             prompt += " Unknown whale, be skeptical."
         payload = json.dumps({
@@ -812,8 +846,17 @@ class WhaleFollower(Strategy):
         except (json.JSONDecodeError, TypeError):
             tags_list = []
 
-        tier = self._whale_tiering.get_tier(alpha_score) if self._whale_tiering else "unknown"
-        tier_config = self._whale_tiering.get_tier_config(alpha_score) if self._whale_tiering else {}
+        # Prefer dual-axis tier cache; fall back to alpha-score single-axis
+        dual_config = self._whale_tiering.get_cached_tier(signal.whale_name) if self._whale_tiering else {}
+        if dual_config.get("max_position_usd", 0) > 0 and dual_config["max_position_usd"] != 100:
+            cached = self._whale_tiering.get_raw_cache(signal.whale_name)
+            cap = cached.get("capital_tier", "?") if cached else "?"
+            prec = cached.get("precision_tier", "?") if cached else "?"
+            tier = f"{cap}+{prec}"
+            tier_config = dual_config
+        else:
+            tier = self._whale_tiering.get_tier(alpha_score) if self._whale_tiering else "unknown"
+            tier_config = self._whale_tiering.get_tier_config(alpha_score) if self._whale_tiering else {}
 
         # Apply tier confidence threshold (overrides base config)
         if self._whale_tiering and not self._whale_tiering.validate_confidence(signal.confidence, alpha_score, tags_list):
@@ -831,6 +874,15 @@ class WhaleFollower(Strategy):
             self.log.info(
                 f"Signal below tier edge_score threshold ({tier}): {signal.whale_name} "
                 f"(edge {edge_val:.2f} < {min_edge:.2f})"
+            )
+            return
+
+        # REJECT: intelligence-flagged sacrificial accounts
+        if self._whale_intel and self._whale_intel.should_hard_reject(signal.whale_name):
+            intel = self._whale_intel.get(signal.whale_name)
+            self.log.info(
+                f"REJECT intelligence-flagged sacrificial account: {signal.whale_name} "
+                f"(trust={intel['trust_score']}/10)"
             )
             return
 
@@ -878,6 +930,18 @@ class WhaleFollower(Strategy):
             ).get("kelly_multiplier", 1.0)
             signal.suggested_size_usd = round(signal.suggested_size_usd * tier_kelly, 2)
 
+        # Whale intelligence Kelly adjustment
+        if self._whale_intel:
+            original_size = signal.suggested_size_usd
+            new_size, intel = self._whale_intel.adjust_size(signal.whale_name, signal.suggested_size_usd)
+            if intel:
+                signal.suggested_size_usd = new_size
+                self.log.info(
+                    f"Intel Kelly adjustment: {intel['classification']} "
+                    f"x{self._whale_intel.kelly_multiplier(intel['classification'])} "
+                    f"(${original_size:.0f} -> ${new_size:.0f})"
+                )
+
         # LLM signal quality scoring (1700 Qwen3.5-9B, ~0.3s)
         llm_score = self._llm_score_signal(signal)
         if llm_score < 5:
@@ -917,6 +981,29 @@ class WhaleFollower(Strategy):
                 self.log.info(f"Sports daily loss limit breached (-${SPORTS_DAILY_LOSS_LIMIT}), skipping sports signal")
                 return
 
+        # ── FADE DETECTION: Should this signal be inverted? ──
+        is_fade = False
+        if self._whale_intel:
+            fade_intel = self._whale_intel.should_fade(signal.whale_name)
+            if fade_intel:
+                # Check fade concurrency limit
+                if len(self._fade_positions) >= self._fade_max_concurrent:
+                    self.log.info(f"FADE concurrency limit reached ({len(self._fade_positions)}/{self._fade_max_concurrent}), skipping: {signal.whale_name}")
+                    return
+                # Invert the signal: flip YES↔NO, buy↔sell
+                original_side = signal.side
+                original_outcome = signal.outcome
+                signal.side = "sell" if signal.side == "buy" else "buy"
+                signal.outcome = "NO" if signal.outcome == "YES" else "YES"
+                # Reduce size by 0.5x fade multiplier
+                original_size = signal.suggested_size_usd
+                signal.suggested_size_usd = round(original_size * 0.5, 2)
+                is_fade = True
+                self.log.info(
+                    f"FADE mode: {signal.whale_name} ({fade_intel['classification']}, trust={fade_intel['trust_score']}/10) "
+                    f"inverted {original_side}→{signal.side}, size ${original_size:.0f}→${signal.suggested_size_usd:.0f}"
+                )
+
         # Dynamic subscription: every signal is processed regardless of pre-subscribed markets.
         # The sandbox execution client has been patched to auto-fill any instrument,
         # bypassing the exchange's matching engine limitation.
@@ -951,6 +1038,7 @@ class WhaleFollower(Strategy):
             edge_score=getattr(signal, 'edge_score', 0.0) or 0.0,
             confidence=signal.confidence or 0.0,
             entry_reason=signal.reason or "",
+            is_fade=is_fade,
         )
 
     def _find_instrument(self, condition_id: str) -> InstrumentId | None:
@@ -1012,7 +1100,7 @@ class WhaleFollower(Strategy):
         instrument_id: InstrumentId = None, whale_win_rate: float | None = None,
         whale_name: str = None, market_title: str = "", market_category: str = "",
         whale_address: str = "", edge_score: float = 0.0, confidence: float = 0.0,
-        entry_reason: str = "",
+        entry_reason: str = "", is_fade: bool = False,
     ) -> None:
         """Enter Kelly-sized position."""
         inst_id = instrument_id or self.config.instrument_id
@@ -1137,6 +1225,7 @@ class WhaleFollower(Strategy):
                 "entry_reason": entry_reason,
                 "kelly_fraction": self.config.kelly_fraction,
                 "entry_price": price,
+                "is_fade": is_fade,
             }
         # Register intended price for PaperExecClient to use at fill time
         from components.paper_execution import set_fill_price
