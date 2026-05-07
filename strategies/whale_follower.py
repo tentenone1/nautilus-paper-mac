@@ -97,30 +97,48 @@ RE_ENTRY_COOLDOWN_SECS = 300  # Don't re-enter same instrument within 5 minutes 
 LOW_CASH_ALERT_PCT = 0.20  # Warn when free balance drops below 20% of bankroll
 
 # Whale blacklist (auto-reject proven losers, data from trades.db)
+# Sybil groups added 2026-05-08 from entity_clustering.py daily run (ebd130cd1643)
+# Group 1 (15 wallets, timing_corr=14, 1047 trades, 252 markets)
+# Group 2 (3 wallets, SMCAOMCRL cluster)
+# Group 3 (3 wallets, LaBradfordSmith22 cluster)
 WHALE_BLACKLIST = frozenset({
+    "0x492442EaB586F242B53bDa933fD5dE859c8A3782-1766317541188",  # sybil G1 coordinator
+    "0x5d1d9cfd66ee3068c2a8a57dedf1e1b006dcafd2",  # sybil G2 coordinator
     "0xcF609D3256f0f37f0595E5D",
+    "AppleTime67",      # sybil G1
+    "Dvitaminbets",     # sybil G1
     "FTWUTB",
+    "Herdonia",         # sybil G1
     "JPMorgan101",
-    "LaBradfordSmith22",
-    "SMCAOMCRL",
+    "LaBradfordSmith22",  # sybil G3
+    "NewTeamSosed4",    # sybil G1
+    "Pajamapants",      # sybil G1
+    "SMCAOMCRL",        # sybil G2
     "Sassy-Bucket",
+    "Talvez10",         # sybil G1
     "TEST-WHALE-3",
     "TheVeryGoodCow",
+    "Wannac",           # sybil G1
     "alwaysfade",
     "asdfjh",
-    "beetlepimp",
-    "benwyatt",
+    "beetlepimp",       # sybil G1
+    "benwyatt",         # sybil G1
+    "bossoskil1",       # sybil G1
     "easypredict",
     "iDARKenjoyer",
-    "joblessfinalboss",
+    "joblessfinalboss",  # sybil G3
     "johnny234",
+    "loitterer",        # sybil G1
     "lu1zzz",
+    "matanovik",        # sybil G3
+    "meifei123",        # sybil G2
+    "mooseborzoi",      # sybil G1
+    "pilotlady",        # sybil G1
     "sbsigner",
     "therighteousdog",
     "timezonewarrior",
-    "trade-via-Gravia",
+    "trade-via-Gravia",  # sybil G1
     "TTEST2",
-    "Wannac",
 })
 SPORTS_WHALE_BLACKLIST = frozenset({
     "0xcF609D3256f0f37f0595E5D",
