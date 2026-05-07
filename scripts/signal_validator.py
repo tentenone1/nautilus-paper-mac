@@ -18,8 +18,7 @@ from typing import Optional
 
 TRADE_RECS_FILE = "/home/elon-1/workspace/nautilus-trading/research/trade_recommendations.json"
 TRACKER_FILE = "/home/elon-1/workspace/nautilus-trading/research/signal_validation.json"
-CLOB_MIDPOINT_URL = "https://clob.polymarket.com/midpoint?token_id={}"
-MARKETS_API = "https://data-api.polymarket.com/markets?conditionId={}&limit=1"
+CLOB_API = "https://clob.polymarket.com"
 
 NOISE_TITLES = ["highest temperature", "Bitcoin Up or Down", "bitcoin", "temperature", "weather"]
 
@@ -34,44 +33,79 @@ def fetch_json(url: str, timeout: int = 10) -> Optional[dict | list]:
 
 
 def get_current_price(condition_id: str) -> Optional[float]:
-    """Try to get current market price from CLOB midpoint or data API."""
-    # Try to get market info first — it has outcomePrices
-    market_info = fetch_json(MARKETS_API.format(condition_id))
-    if market_info and len(market_info) > 0:
-        prices = market_info[0].get("outcomePrices", "")
-        if prices:
+    """Get current YES token price from CLOB /markets/{condition_id}."""
+    url = f"{CLOB_API}/markets/{condition_id}"
+    data = fetch_json(url)
+    if not isinstance(data, dict):
+        return None
+    tokens = data.get("tokens", [])
+    yes_token = next((t for t in tokens if t.get("outcome", "").lower() == "yes"), None)
+    if yes_token:
+        price = yes_token.get("price")
+        if price is not None:
             try:
-                parsed = json.loads(prices)
-                if parsed and len(parsed) > 0:
-                    return float(parsed[0])
-            except (json.JSONDecodeError, TypeError, ValueError, IndexError):
+                return float(price)
+            except (TypeError, ValueError):
                 pass
+    # Fallback: check outcomePrices field
+    prices_str = data.get("outcomePrices", "")
+    if prices_str:
+        try:
+            parsed = json.loads(prices_str) if isinstance(prices_str, str) else prices_str
+            if isinstance(parsed, list) and len(parsed) > 0:
+                return float(parsed[0])
+        except (json.JSONDecodeError, TypeError, ValueError, IndexError):
+            pass
+    return None
+
+
+def get_winning_outcome(condition_id: str) -> Optional[str]:
+    """Get the name of the winning outcome from CLOB API."""
+    url = f"{CLOB_API}/markets/{condition_id}"
+    data = fetch_json(url)
+    if not isinstance(data, dict):
+        return None
+    tokens = data.get("tokens", [])
+    for t in tokens:
+        if t.get("winner") is True:
+            return t.get("outcome", "")
     return None
 
 
 def check_resolution(condition_id: str) -> Optional[str]:
-    """Check if a market has resolved."""
-    market_info = fetch_json(MARKETS_API.format(condition_id))
-    if market_info and len(market_info) > 0:
-        closed = market_info[0].get("closed", False)
-        if closed:
-            prices = market_info[0].get("outcomePrices", "")
-            if prices:
-                try:
-                    parsed = json.loads(prices)
-                    if parsed and len(parsed) >= 2:
-                        yes_price = float(parsed[0])
-                        no_price = float(parsed[1])
-                        if yes_price > 0.99:
-                            return "YES"
-                        elif no_price > 0.99:
-                            return "NO"
-                        else:
-                            return f"DISPUTED({yes_price:.2f}/{no_price:.2f})"
-                except (json.JSONDecodeError, TypeError, ValueError):
-                    pass
-        return "open"
-    return "unknown"
+    """Check if a market has resolved via CLOB /markets/{condition_id}."""
+    url = f"{CLOB_API}/markets/{condition_id}"
+    data = fetch_json(url)
+    if not isinstance(data, dict):
+        return None  # API error — can't determine
+
+    tokens = data.get("tokens", [])
+    winners = [t for t in tokens if t.get("winner") is True]
+    losers = [t for t in tokens if t.get("winner") is False]
+
+    if len(winners) == 1 and len(losers) >= 1:
+        winner_outcome = winners[0].get("outcome", "")
+        if "yes" in winner_outcome.lower():
+            return "YES"
+        elif "no" in winner_outcome.lower():
+            return "NO"
+        else:
+            return f"SETTLED({winner_outcome})"
+
+    # Check closed-but-unresolved (disputed)
+    if data.get("closed", False) and not winners:
+        prices_str = data.get("outcomePrices", "")
+        if prices_str:
+            try:
+                parsed = json.loads(prices_str) if isinstance(prices_str, str) else prices_str
+                if isinstance(parsed, list) and len(parsed) >= 2:
+                    return f"DISPUTED({float(parsed[0]):.2f}/{float(parsed[1]):.2f})"
+            except (json.JSONDecodeError, TypeError, ValueError, IndexError):
+                pass
+        return "UNRESOLVED"
+
+    # Not yet resolved
+    return "open"
 
 
 def main():
@@ -152,16 +186,31 @@ def main():
                         entry["would_profit"] = "breakeven"
                         entry["status"] = "open"
             
-            if resolution and resolution != "open":
+            if resolution and resolution not in ("open", "UNRESOLVED"):
                 entry["resolution"] = resolution
                 entry["status"] = "resolved"
                 
-                # Calculate actual outcome
+                # Calculate actual outcome PnL based on winning token
                 suggested_entry = entry.get("entry_suggested", 0.5)
-                if resolution == "YES" and suggested_entry > 0:
-                    entry["actual_outcome_pnl"] = round((1 - suggested_entry) / suggested_entry * 100, 1)
-                elif resolution == "NO":
-                    entry["actual_outcome_pnl"] = -100.0  # Lost full entry
+                if resolution == "NO":
+                    # NO token won — full loss
+                    entry["actual_outcome_pnl"] = -100.0
+                elif resolution == "YES" or resolution.startswith("SETTLED("):
+                    # Fetch token data: first token (index 0) is the YES position
+                    tokens_data = fetch_json(f"{CLOB_API}/markets/{cid}")
+                    yes_token_winner = False
+                    if isinstance(tokens_data, dict):
+                        tokens = tokens_data.get("tokens", [])
+                        if tokens and len(tokens) > 0:
+                            yes_token_winner = tokens[0].get("winner") is True
+                    
+                    if yes_token_winner:
+                        # YES token won — BUY would profit
+                        if suggested_entry > 0:
+                            entry["actual_outcome_pnl"] = round((1 - suggested_entry) / suggested_entry * 100, 1)
+                    else:
+                        # NO token won — full loss
+                        entry["actual_outcome_pnl"] = -100.0
                 
                 print(f"  ✅ RESOLVED: {market[:40]}... → {resolution} (would PnL: {entry.get('actual_outcome_pnl', '?')}%)", flush=True)
             
