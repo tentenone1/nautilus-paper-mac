@@ -1741,6 +1741,21 @@ class WhaleFollower(Strategy):
         except Exception:
             pass
         
+        # System-level memory warning — log if total used > 85%
+        try:
+            with open("/proc/meminfo") as f:
+                meminfo = f.read()
+            total_match = re.search(r"MemTotal:\s+(\d+)", meminfo)
+            avail_match = re.search(r"MemAvailable:\s+(\d+)", meminfo)
+            if total_match and avail_match:
+                total_kb = int(total_match.group(1))
+                avail_kb = int(avail_match.group(1))
+                used_pct = 100 - (avail_kb * 100 / total_kb)
+                if used_pct > 85:
+                    self.log.warning(f"HIGH SYSTEM MEMORY: {used_pct:.0f}% used ({avail_kb//1024}MB free)")
+        except Exception:
+            pass
+        
         # Resolution polling — check if tracked open positions' markets have resolved
         # Updates trades.db with actual P&L when markets resolve
         if now - self._last_resolution_poll >= self._resolution_poll_interval:

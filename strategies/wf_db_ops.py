@@ -125,7 +125,7 @@ def log_trade_to_db(
             trade_id,
             timestamp,
             whale_name,
-            whale_address,
+            whale_address or whale_name,  # fallback to name if address empty
             market_title,
             side,
             entry_price,
