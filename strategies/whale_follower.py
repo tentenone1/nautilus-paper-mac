@@ -35,6 +35,12 @@ from components.resolution_poller import ResolutionPoller
 from py_clob_client.constants import POLYGON
 from nautilus_trader.adapters.polymarket.common.parsing import parse_polymarket_instrument
 
+# P2: Sybil monitoring integration
+try:
+    from scripts.sybil_monitor_wrapper import run_sybil_monitoring
+except ImportError:
+    run_sybil_monitoring = None
+
 from strategies.whale_tiering import WhaleTiering, WhaleIntelligence
 from strategies.whale_tracker_new import (
     WhaleIdentity,
