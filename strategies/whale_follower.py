@@ -920,7 +920,7 @@ class WhaleFollower(Strategy):
             wallet_info = f" wallet={wallet[:10]}..." if wallet else ""
             self.log.info(
                 f"REJECT unknown whale zero edge: {signal.whale_name}{wallet_info} | "
-                f"market={getattr(signal, "market_title", "")[:40]} | "
+                f'market={getattr(signal, "market_title", "")[:40]} | '
                 f"conf={signal.confidence:.0%}"
             )
             return
