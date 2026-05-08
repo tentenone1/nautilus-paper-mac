@@ -413,13 +413,17 @@ class ResolutionPoller:
         try:
             conn = sqlite3.connect(str(self._db_path))
             conn.execute("PRAGMA busy_timeout=5000")
+            # Determine exit_price: 1.0 for profit, 0.0 for loss
+            exit_price = 1.0 if actual_pnl > 0 else 0.0 if actual_pnl < 0 else actual_return
             conn.execute("""
                 UPDATE trades
                 SET actual_pnl = ?,
                     actual_return = ?,
-                    resolution_outcome = ?
+                    resolution_outcome = ?,
+                    exit_price = ?,
+                    exit_reason = 'resolved'
                 WHERE trade_id = ?
-            """, (actual_pnl, actual_return, resolution_outcome, trade_id))
+            """, (actual_pnl, actual_return, resolution_outcome, exit_price, trade_id))
             conn.commit()
             conn.close()
             return True
