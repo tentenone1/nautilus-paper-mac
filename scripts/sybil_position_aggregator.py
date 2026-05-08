@@ -85,7 +85,7 @@ def fetch_positions(address: str, timeout: int = 15) -> list[dict]:
         if isinstance(data, list):
             return data
         return []
-    except (HTTPError, URLError) as e:
+    except Exception as e:
         logger.warning(f"Failed to fetch positions for {address}: {e}")
         return []
 
