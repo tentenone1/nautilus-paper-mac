@@ -1,0 +1,68 @@
+"""Sybil‑intelligence orchestration wrapper.
+
+Provides run_sybil_monitoring() that orchestrates the three existing
+sybil utilities and writes a unified report to research/sybil_intelligence.json.
+"""
+
+import json
+import logging
+import pathlib
+from datetime import datetime, timezone
+from typing import Any, Dict
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _safe_call(func: callable, name: str) -> Dict[str, Any]:
+    """Execute function with error handling."""
+    try:
+        result = func()
+        LOGGER.debug("%s returned %s", name, result)
+        return result or {}
+    except Exception as exc:
+        LOGGER.error("%s failed: %s", name, exc)
+        return {}
+
+
+def run_sybil_monitoring() -> Dict[str, Any]:
+    """Run the three sybil components and write a unified JSON report.
+
+    Returns:
+        dict: Combined report structure with signals, positions, and meta_whale_groups.
+    """
+    # Import existing sybil scripts
+    try:
+        from scripts.sybil_signal_generator import main as gen_signal
+        from scripts.sybil_position_aggregator import main as agg_position
+        from scripts.sybil_intelligence import main as compute_meta
+    except ImportError as e:
+        LOGGER.warning("Sybil imports failed: %s", e)
+        return {"error": str(e), "timestamp": datetime.now(timezone.utc).isoformat()}
+
+    # Step 1 – generate raw signals
+    signals = _safe_call(gen_signal, "sybil_signal_generator")
+
+    # Step 2 – aggregate positions
+    positions = _safe_call(agg_position, "sybil_position_aggregator")
+
+    # Step 3 – compute meta‑whale groups
+    meta = _safe_call(compute_meta, "sybil_intelligence")
+
+    report = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "signals": signals,
+        "positions": positions,
+        "meta_whale_groups": meta,
+    }
+
+    # Write report
+    out_path = pathlib.Path("research/sybil_intelligence.json")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report, indent=2))
+    LOGGER.info("Sybil intelligence report written to %s", out_path)
+
+    return report
+
+
+if __name__ == "__main__":
+    print(json.dumps(run_sybil_monitoring(), indent=2))

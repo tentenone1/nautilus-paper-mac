@@ -1787,6 +1787,18 @@ class WhaleFollower(Strategy):
                 self.log.error(f"Resolution poll error: {e}")
             self._last_resolution_poll = now
 
+
+        # P2: Sybil intelligence monitoring (every timer tick)
+        if run_sybil_monitoring:
+            try:
+                sybil_report = run_sybil_monitoring()
+                if sybil_report and not sybil_report.get("error"):
+                    groups_active = len(sybil_report.get("meta_whale_groups", {}).get("groups", []))
+                    if groups_active > 0:
+                        self.log.info(f"[SYBIL] {groups_active} meta-whale groups tracked")
+            except Exception as e:
+                self.log.error(f"Sybil monitoring failed: {e}")
+
         # Instrument recycle: unsubscribe/resubscribe every 30min to flush stale order books
         # This prevents the memory leak from unbounded order book cache growth in the framework
         if now - self._last_recycle >= self._recycle_interval:
