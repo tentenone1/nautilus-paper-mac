@@ -87,6 +87,18 @@ def _is_fade_whale(whale_name: str) -> bool:
     return False
 
 
+
+
+def _is_follow_whale(whale_name: str) -> bool:
+    """Check if whale has should_follow=True in profiles (hidden partner)."""
+    for profile in _WHALE_PROFILES.get("profiles", []):
+        stats = profile.get("stats", {})
+        if stats.get("name") == whale_name:
+            profile_data = profile.get("profile", {})
+            return bool(profile_data.get("should_follow", False))
+    return False
+
+
 def _get_strategy_confidence(strategy_name: str) -> float | None:
     """Get confidence for a jailbreak strategy."""
     for strat in _JAILBREAK_STRATEGIES.get("strategies", []):
@@ -182,6 +194,14 @@ def on_signal(
         log.info(f"FADE whale (profile): {signal.whale_name}")
         # Mark as fade instead of reject - system can use this for counter-trading
         return
+
+    # P2: Hidden partner boost (should_follow=True → confidence boost)
+    if _is_follow_whale(signal.whale_name):
+        original_conf = signal.confidence
+        signal.confidence = min(1.0, signal.confidence * 1.25)  # 25% boost
+        log.info(f"FOLLOW hidden partner: {signal.whale_name} | conf {original_conf:.0%} → {signal.confidence:.0%}")
+        # Continue processing - don't return, just boost confidence
+
 
     # REJECT: unknown whale signals with zero edge score (noise trades)
     if (
