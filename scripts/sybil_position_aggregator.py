@@ -9,6 +9,7 @@ Output: research/sybil_positions.json
 import json
 import logging
 import os
+import sqlite3
 import time
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -21,6 +22,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DATA_API_BASE = "https://data-api.polymarket.com"
+
+# Paths for entity cluster integration
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TRADES_DB = os.path.join(BASE_DIR, "research", "trades.db")
+ENTITY_CLUSTERS_PATH = os.path.join(BASE_DIR, "research", "entity_clusters.json")
 
 SYBIL_GROUPS = {
     "sybil_group_1": {
@@ -62,6 +68,91 @@ SYBIL_GROUPS = {
 }
 
 
+def load_entity_clusters() -> dict:
+    """Load entity clusters from entity_clusters.json and convert to sybil groups.
+
+    For each cluster with 3+ wallets, creates a dynamic sybil group.
+    Maps readable names to addresses using trades.db.
+    Returns a dict matching SYBIL_GROUPS format.
+    """
+    if not os.path.exists(ENTITY_CLUSTERS_PATH):
+        logger.info("No entity_clusters.json found, using hardcoded groups only")
+        return {}
+
+    if not os.path.exists(TRADES_DB):
+        logger.warning("trades.db not found, cannot map names to addresses")
+        return {}
+
+    try:
+        with open(ENTITY_CLUSTERS_PATH, "r", encoding="utf-8") as f:
+            clusters_data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning(f"Failed to load entity clusters: {e}")
+        return {}
+
+    # Build name -> address map from trades.db
+    try:
+        db = sqlite3.connect(TRADES_DB)
+        rows = db.execute("""
+            SELECT DISTINCT whale_name, whale_address FROM trades
+            WHERE whale_address IS NOT NULL AND whale_address != ''
+            AND whale_name NOT LIKE 'unknown%'
+        """).fetchall()
+        db.close()
+    except sqlite3.Error as e:
+        logger.warning(f"Failed to query trades.db: {e}")
+        return {}
+
+    name_to_addr: dict[str, str] = {}
+    for name, addr in rows:
+        clean_name = name.strip().lower()
+        clean_addr = addr.strip().lower()
+        if clean_name and clean_addr and clean_addr.startswith("0x"):
+            name_to_addr[clean_name] = clean_addr
+            name_to_addr[name.strip()] = addr.strip()
+
+    dynamic_groups: dict = {}
+    cluster_id = 0
+
+    for cluster in clusters_data.get("clusters", []):
+        entities = cluster.get("entities", [])
+        if len(entities) < 3:
+            continue
+
+        cluster_id += 1
+        wallets: dict[str, str] = {}
+        for entity in entities:
+            clean = entity.strip()
+            if clean.startswith("0x"):
+                # Raw address — use as-is for coordinator
+                wallets[clean] = "coordinator"
+            else:
+                # Named entity — look up address
+                addr = name_to_addr.get(clean) or name_to_addr.get(clean.lower())
+                if addr:
+                    wallets[addr] = clean
+                else:
+                    wallets[clean] = clean
+
+        if len(wallets) >= 3:
+            group_id = f"entity_cluster_{cluster_id}"
+            dynamic_groups[group_id] = {
+                "priority": "AUTO",
+                "wallets": wallets,
+            }
+            logger.info(
+                f"Loaded entity cluster {group_id}: {len(wallets)} wallets, "
+                f"from cluster of {len(entities)} entities"
+            )
+
+    if not dynamic_groups:
+        logger.info("No entity clusters with 3+ wallets found")
+    else:
+        logger.info(f"Loaded {len(dynamic_groups)} dynamic entity clusters")
+
+    return dynamic_groups
+
+
 def is_active_position(pos: dict) -> bool:
     """Check if a position is still open (not resolved/redeemed)."""
     if pos.get("redeemable", False):
@@ -91,14 +182,26 @@ def fetch_positions(address: str, timeout: int = 15) -> list[dict]:
 
 
 def aggregate_by_group() -> dict:
-    """Query all sybil wallets, filter active positions, aggregate by group."""
+    """Query all sybil wallets, filter active positions, aggregate by group.
+
+    Merges hardcoded SYBIL_GROUPS with dynamic entity clusters from
+    entity_clusters.json. Dynamic groups are loaded on each run.
+    """
     result = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "groups": {},
         "summary": {},
     }
 
-    for group_id, group_info in SYBIL_GROUPS.items():
+    # Merge hardcoded groups with dynamic entity clusters
+    all_groups = dict(SYBIL_GROUPS)
+    dyn_groups = load_entity_clusters()
+    for gid, ginfo in dyn_groups.items():
+        if gid not in all_groups:
+            all_groups[gid] = ginfo
+            logger.info(f"Merged dynamic group {gid}: {len(ginfo['wallets'])} wallets")
+
+    for group_id, group_info in all_groups.items():
         all_active_positions = []
         wallet_results = {}
 
@@ -173,8 +276,8 @@ def aggregate_by_group() -> dict:
 
     total_all = sum(g["total_active_exposure_usd"] for g in result["groups"].values())
     result["summary"] = {
-        "total_groups": len(SYBIL_GROUPS),
-        "total_wallets": sum(len(g["wallets"]) for g in SYBIL_GROUPS.values()),
+        "total_groups": len(all_groups),
+        "total_wallets": sum(len(g["wallets"]) for g in all_groups.values()),
         "total_active_exposure_usd": round(total_all, 2),
     }
 

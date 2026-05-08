@@ -98,7 +98,7 @@ def main():
                 print(f"  Known whale detected: {KNOWN_WALLETS[wallet]} on {t.get('title','?')[:40]}", flush=True)
         
         # 2. Detect signal patterns — filter out noise
-        NOISE_PATTERNS = ["highest temperature", "Bitcoin Up or Down", "Ethereum Up or Down", "Solana Up or Down", "Will ", " win on "]
+        NOISE_PATTERNS = ["highest temperature", "bitcoin up or down", "ethereum up or down", "solana up or down", "will ", " win on "]
         for cid, m in markets.items():
             title_lower = m["title"].lower()
             if any(p in title_lower for p in NOISE_PATTERNS):

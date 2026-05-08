@@ -39,6 +39,18 @@ WHALE_BLACKLIST = frozenset({
     "joblessfinalboss", # -1,446 on sports
     "TTEST2",           # -17,419 actual P&L
     "Wannac",           # -1,119 actual P&L
+    # Auto-blacklisted from entity clusters (2026-05-08)
+    "AppleTime67",      # entity cluster — should_fade=True (degenerate_human)
+    "Dvitaminbets",     # entity cluster — should_fade=True (degenerate_human)
+    "Herdonia",         # entity cluster — should_fade=True (degenerate_human)
+    "NewTeamSosed4",    # entity cluster — should_fade=True (degenerate_human)
+    "Pajamapants",      # entity cluster — should_fade=True (degenerate_human)
+    "Talvez10",         # entity cluster — should_fade=True (degenerate_human)
+    "beetlepimp",       # entity cluster — should_fade=True (degenerate_human)
+    "loitterer",        # entity cluster — should_fade=True (market_maker)
+    "mooseborzoi",      # entity cluster — should_fade=True (degenerate_human)
+    "pilotlady",        # entity cluster — should_fade=True (degenerate_human)
+    "trade-via-Gravia", # entity cluster — should_fade=True (market_maker)
 })
 
 SPORTS_WHALE_BLACKLIST = frozenset({
