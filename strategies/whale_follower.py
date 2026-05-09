@@ -926,14 +926,24 @@ class WhaleFollower(Strategy):
             )
             return
 
-        # REJECT: blacklisted whales
+        # CHECK: blacklisted whales - allow fade engine to process if eligible
         if signal.whale_name in WHALE_BLACKLIST:
-            self.log.info(f"REJECT blacklisted whale: {signal.whale_name}")
-            return
+            # Check if fade engine wants to fade this blacklisted whale
+            if self._whale_intel and self._whale_intel.should_fade(signal.whale_name):
+                self.log.info(f"BLACKLISTED whale eligible for FADE: {signal.whale_name}")
+                # Continue to let fade detection at line 1024 handle it
+            else:
+                self.log.info(f"REJECT blacklisted whale: {signal.whale_name}")
+                return
         mc = getattr(signal, "market_category", "") or ""
         if signal.whale_name in SPORTS_WHALE_BLACKLIST and mc.lower() == "sports":
-            self.log.info(f"REJECT sports-blacklisted whale: {signal.whale_name}")
-            return
+            # Check if fade engine wants to fade this sports-blacklisted whale
+            if self._whale_intel and self._whale_intel.should_fade(signal.whale_name):
+                self.log.info(f"SPORTS-BLACKLISTED whale eligible for FADE: {signal.whale_name}")
+                # Continue to let fade detection at line 1024 handle it
+            else:
+                self.log.info(f"REJECT sports-blacklisted whale: {signal.whale_name}")
+                return
 
         # REJECT: unknown whale signals with zero edge score (noise trades)
         # Historical data shows 518 such trades lost -$2,532 total.
