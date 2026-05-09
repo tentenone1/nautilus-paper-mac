@@ -67,6 +67,22 @@ WHALE_BLACKLIST = frozenset({
     "mooseborzoi",      # entity cluster — skilled_human
     "pilotlady",        # entity cluster — skilled_human
     "trade-via-Gravia", # entity cluster — skilled_human
+    "AppleTime67",        # entity cluster — skilled_human
+    "Dvitaminbets",        # entity cluster — skilled_human
+    "Herdonia",        # entity cluster — skilled_human
+    "NewTeamSosed4",        # entity cluster — skilled_human
+    "Pajamapants",        # entity cluster — skilled_human
+    "SMCAOMCRL",        # entity cluster — skilled_human
+    "Talvez10",        # entity cluster — skilled_human
+    "Wannac",        # entity cluster — skilled_human
+    "beetlepimp",        # entity cluster — skilled_human
+    "benwyatt",        # entity cluster — skilled_human
+    "bossoskil1",        # entity cluster — skilled_human
+    "loitterer",        # entity cluster — skilled_human
+    "meifei123",        # entity cluster — skilled_human
+    "mooseborzoi",        # entity cluster — skilled_human
+    "pilotlady",        # entity cluster — skilled_human
+    "trade-via-Gravia",        # entity cluster — skilled_human
 })
 
 SPORTS_WHALE_BLACKLIST = frozenset({
