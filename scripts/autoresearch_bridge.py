@@ -2,7 +2,7 @@
 """Autoresearch Bridge — takes signal monitor detections and produces trade recommendations.
 
 Pipeline:
-1. Reads signal_monitor_detections.json for tracked markets
+1. Reads signal_detections.json for tracked markets
 2. For each promising detection, queries CLOB midpoint for live pricing
 3. Feeds market data through uncensored LLM for analysis
 4. Outputs trade card: BUY/WAIT/SKIP with entry, target, stop, Kelly
@@ -32,16 +32,16 @@ logger = logging.getLogger("autoresearch_bridge")
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 POLL_INTERVAL_SECS: int = 300
-LLM_TIMEOUT_SECS: int = 120
+LLM_TIMEOUT_SECS: int = 300
 API_TIMEOUT_SECS: int = 10
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 STATE_FILE: Path = PROJECT_ROOT / "research" / "autoresearch_state.json"
-DETECTIONS_FILE: Path = PROJECT_ROOT / "research" / "signal_monitor_detections.json"
+DETECTIONS_FILE: Path = PROJECT_ROOT / "research" / "signal_detections.json"
 OUTPUT_FILE: Path = PROJECT_ROOT / "research" / "trade_recommendations.json"
 WHALE_DB_PATH: Path = PROJECT_ROOT / "pipeline" / "data" / "whale_discovery.db"
 
-LLM_URL: str = "http://127.0.0.1:8080/v1/chat/completions"
+LLM_URL: str = "http://192.168.50.148:1234/v1/chat/completions"
 LLM_MODEL: str = "qwen3.6-35b-a3b-uncensored-hauhaucs-aggressive"
 CLOB_MIDPOINT_URL: str = "https://clob.polymarket.com/midpoint?token_id={}"
 MARKETS_API: str = "https://data-api.polymarket.com/markets?conditionId={}&limit=1"
@@ -110,12 +110,11 @@ def query_llm(prompt: str) -> str:
     payload = json.dumps({
         "model": LLM_MODEL,
         "messages": [
-            {"role": "system", "content": "You are a Polymarket trading analyst. Output ONLY valid JSON. Do NOT include any reasoning, thinking, or explanation. Just the JSON object."},
+            {"role": "system", "content": "You are a Polymarket trading analyst. Output ONLY a single JSON object with no preamble, no thinking, no explanation. Start your response with { and end with }. Fields: market, decision (BUY/WAIT/SKIP), confidence (0.0-1.0), reason, entry_price, target_price, stop_price, kelly_fraction, hold_hours."},
             {"role": "user", "content": prompt}
         ],
-        "max_tokens": 1200,
-        "temperature": 0.1,
-        "reasoning_format": "none"
+        "max_tokens": 8192,
+        "temperature": 0.0
     }).encode()
     try:
         req = urllib.request.Request(LLM_URL, data=payload, headers={"Content-Type": "application/json"})
@@ -123,8 +122,7 @@ def query_llm(prompt: str) -> str:
             data = json.loads(resp.read())
         msg = data["choices"][0]["message"]
         content = msg.get("content", "") or ""
-        reasoning = msg.get("reasoning_content", "") or ""
-        return content if content else reasoning
+        return content
     except Exception as exc:
         logger.error("LLM query failed: %s", exc, extra={"error": str(exc)})
         return f"LLM error: {exc}"
@@ -283,6 +281,7 @@ OUTPUT (JSON only):
     
     # Clean thinking markers from Qwen models
     cleaned = llm_out
+    cleaned = re.sub(r'<think>.*?</think>', '', cleaned, flags=re.DOTALL)
     cleaned = re.sub(r'<tool_call>', '', cleaned)
     cleaned = re.sub(r'</tool_call>', '', cleaned)
     
@@ -297,30 +296,39 @@ OUTPUT (JSON only):
         if prefix in cleaned:
             cleaned = cleaned.split(prefix, 1)[-1]
     
-    # Find the LAST JSON object ({...}) — that's the structured output
-    json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
-    if json_match:
-        try:
-            return json.loads(json_match.group(0))
-        except json.JSONDecodeError:
-            # If JSON is incomplete, try to extract partial
-            partial = json_match.group(0)
-            if '"decision"' in partial and '"confidence"' in partial:
-                decision_match = re.search(r'"decision":\s*"([^"]+)"', partial)
-                conf_match = re.search(r'"confidence":\s*([0-9.]+)', partial)
-                if decision_match and conf_match:
-                    return {
-                        "market": market,
-                        "decision": decision_match.group(1),
-                        "confidence": float(conf_match.group(1)),
-                        "reason": f"Partial parse (truncated): {partial[:80]}",
-                        "entry_price": price,
-                        "target_price": min(price * 1.5, 0.95),
-                        "stop_price": max(price * 0.9, 0.05),
-                        "kelly_fraction": 0.1,
-                        "hold_hours": 24,
-                        "whale_context": whale_ctx if whale_ctx else "",
-                    }
+    # Extract the LAST valid JSON object (handles thinking preamble and drafts)
+    last_valid: Optional[dict] = None
+    stack: list[int] = []
+    for i, ch in enumerate(cleaned):
+        if ch == '{':
+            stack.append(i)
+        elif ch == '}' and stack:
+            start = stack.pop()
+            if not stack:  # top-level object closed
+                try:
+                    last_valid = json.loads(cleaned[start:i + 1])
+                except json.JSONDecodeError:
+                    pass
+    if last_valid:
+        return last_valid
+
+    # Fallback: try partial parse from truncated output
+    if '"decision"' in cleaned and '"confidence"' in cleaned:
+        decision_match = re.search(r'"decision":\s*"([^"]+)"', cleaned)
+        conf_match = re.search(r'"confidence":\s*([0-9.]+)', cleaned)
+        if decision_match and conf_match:
+            return {
+                "market": market,
+                "decision": decision_match.group(1),
+                "confidence": float(conf_match.group(1)),
+                "reason": f"Partial parse (truncated): {cleaned[:80]}",
+                "entry_price": price,
+                "target_price": min(price * 1.5, 0.95),
+                "stop_price": max(price * 0.9, 0.05),
+                "kelly_fraction": 0.1,
+                "hold_hours": 24,
+                "whale_context": whale_ctx if whale_ctx else "",
+            }
     
     return {
         "market": market,

@@ -98,6 +98,21 @@ TRADE_BUFFER_FLUSH_COUNT = 5  # Number of trades to trigger buffer flush
 EXIT_TIMER_INTERVAL_SECS = 30.0  # How often to check all positions for exits
 RECYCLE_INTERVAL_SECS = 1800.0  # Unsubscribe/resubscribe interval to flush stale order books
 
+# Sybil signal bridge configuration
+SYBIL_SIGNAL_TTL_SECS = 6 * 3600  # 6 hours: discard signals older than this
+SYBIL_SPORTS_SIGNAL_TTL_SECS = 3 * 3600  # 3 hours: sports markets decay faster
+SYBIL_DEDUP_TTL_SECS = 6 * 3600  # 6 hours: dedup window for processed signals
+SYBIL_CONFIDENCE_MIN = 0.40  # Reject signals below this confidence
+SYBIL_CONFIDENCE_BASELINE = 0.50  # Reference point for confidence scaling
+SYBIL_SIZE_MIN_MULTIPLIER = 0.5  # Floor: never go below 50% of base size
+SYBIL_SIZE_MAX_MULTIPLIER = 2.0  # Ceiling: never go above 2x base size
+SYBIL_MAX_PRICE_SLIPPAGE = 0.15  # Skip if price moved >15% against signal direction
+SYBIL_BASE_SIZE_PCT = {
+    "no_bias_fade": 0.10,
+    "concentrated_follow": 0.20,
+    "manipulation_fade": 0.05,
+}
+
 # Position management
 RE_ENTRY_COOLDOWN_SECS = 300  # Don't re-enter same instrument within 5 minutes of exit
 LOW_CASH_ALERT_PCT = 0.20  # Warn when free balance drops below 20% of bankroll
@@ -280,6 +295,7 @@ class WhaleFollower(Strategy):
         # Fade tracking
         self._fade_positions: set[str] = set()  # Track active fade positions for concurrency limiting
         self._fade_max_concurrent: int = 3  # Max concurrent fade trades
+        self._sybil_price_cache: dict[str, tuple[float, float]] = {}  # condition_id -> (midpoint, timestamp)
 
     def on_start(self) -> None:
         self._sports_daily_pnl: float = 0.0
@@ -1871,7 +1887,11 @@ class WhaleFollower(Strategy):
             self.log.error(f"Autoresearch signal check failed: {e}")
 
     def _check_sybil_signals(self) -> None:
-        """Poll sybil signal queue for meta-whale fade/follow recommendations."""
+        """Poll sybil signal queue for meta-whale fade/follow recommendations.
+        
+        Full pipeline: Decay filter → Dedup filter → Price validation → 
+        Confidence scaling → _on_signal(). Clears queue after processing.
+        """
         queue_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research", "sybil_signal_queue.json")
         if not os.path.exists(queue_path):
             return
@@ -1881,12 +1901,102 @@ class WhaleFollower(Strategy):
             signals = data.get("signals", []) if isinstance(data, dict) else []
             if not signals:
                 return
-            # Clear the queue immediately to prevent re-processing on crash
+            
+            now = time.time()
+            total_in = len(signals)
+            
+            # Step 1: Signal Decay — filter out expired signals by age
+            active_signals = []
+            decayed = 0
+            for s in signals:
+                gen_at_str = s.get("generated_at", "")
+                if not gen_at_str:
+                    decayed += 1
+                    continue
+                try:
+                    gen_ts = datetime.fromisoformat(gen_at_str.replace("Z", "+00:00")).timestamp()
+                except (ValueError, TypeError):
+                    decayed += 1
+                    continue
+                age = now - gen_ts
+                title = s.get("market_title", "").lower()
+                is_sports = any(kw in title for kw in ["nfl", "nba", "mlb", "nhl", "ncaa", "soccer", "ufc", "f1"])
+                ttl = SYBIL_SPORTS_SIGNAL_TTL_SECS if is_sports else SYBIL_SIGNAL_TTL_SECS
+                if age > ttl:
+                    decayed += 1
+                    continue
+                active_signals.append(s)
+            
+            if not active_signals:
+                with open(queue_path, "w") as f:
+                    json.dump({"generated_at": "", "signal_count": 0, "signals": []}, f)
+                if decayed:
+                    self.log.info(f"Sybil signals: {decayed} expired, none remaining")
+                return
+            
+            # Step 2: Dedup — file-based state tracking
+            dedup_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research", "sybil_signal_dedup.json")
+            dedup_state: dict[str, float] = {}
+            try:
+                if os.path.exists(dedup_path):
+                    with open(dedup_path) as f:
+                        dedup_state = json.load(f)
+                    cutoff = now - SYBIL_DEDUP_TTL_SECS
+                    dedup_state = {k: v for k, v in dedup_state.items() if isinstance(v, (int, float)) and v >= cutoff}
+            except Exception:
+                dedup_state = {}
+            
+            deduped = 0
+            new_dedup: dict[str, float] = {}
+            for s in active_signals:
+                dk = f"{s.get('condition_id', '')}|{s.get('signal_type', '')}|{s.get('group_id', '')}"
+                if dk in dedup_state:
+                    deduped += 1
+                    continue
+                new_dedup[dk] = now
+            
+            if not new_dedup:
+                with open(queue_path, "w") as f:
+                    json.dump({"generated_at": "", "signal_count": 0, "signals": []}, f)
+                if deduped:
+                    self.log.info(f"Sybil signals: {deduped} deduped, none new")
+                return
+            
+            # Persist dedup state
+            dedup_state.update(new_dedup)
+            try:
+                with open(dedup_path, "w") as f:
+                    json.dump(dedup_state, f)
+            except Exception as e:
+                self.log.error(f"Sybil dedup state write failed: {e}")
+            
+            # Clear queue — done before processing to prevent crash duplication
             with open(queue_path, "w") as f:
                 json.dump({"generated_at": "", "signal_count": 0, "signals": []}, f)
+            
+            # Steps 3-4: Process each surviving signal with price + confidence checks
             processed = 0
-            for s in signals:
-                # Map sybil signal side to whale_follower format
+            price_rejected = 0
+            low_conf_rejected = 0
+            
+            for s in active_signals:
+                dk = f"{s.get('condition_id', '')}|{s.get('signal_type', '')}|{s.get('group_id', '')}"
+                if dk not in new_dedup:
+                    continue  # Was in dedup_state from prior run
+                
+                confidence = s.get("confidence", 0.5)
+                if confidence < SYBIL_CONFIDENCE_MIN:
+                    low_conf_rejected += 1
+                    continue
+                
+                # Price validation
+                price_valid, price_reason = self._validate_sybil_signal_price(s)
+                if not price_valid:
+                    price_rejected += 1
+                    self.log.info(f"Sybil price skip: {s.get('market_title', '')[:50]} — {price_reason}")
+                    continue
+                
+                # Map side
                 sybil_side = s.get("side", "BUY YES")
                 if "BUY YES" in sybil_side.upper():
                     side = "buy"
@@ -1895,31 +2005,23 @@ class WhaleFollower(Strategy):
                     side = "buy"
                     outcome = "No"
                 
-                # Compute suggested size from sybil signal data
+                # Confidence-based size scaling
                 exposure = s.get("total_exposure_usd", 0)
-                wallet_count = s.get("wallet_count", 1)
                 signal_type = s.get("signal_type", "")
-                
-                # Size by strategy: fade gets 10%, follow gets 20%, manipulation gets 5%
-                if signal_type == "no_bias_fade":
-                    size_pct = 0.10
-                elif signal_type == "concentrated_follow":
-                    size_pct = 0.20
-                elif signal_type == "manipulation_fade":
-                    size_pct = 0.05
-                else:
-                    size_pct = 0.10
-                suggested_size = min(exposure * size_pct, 5000)  # cap at $5K
+                base_pct = SYBIL_BASE_SIZE_PCT.get(signal_type, 0.10)
+                multiplier = confidence / SYBIL_CONFIDENCE_BASELINE
+                multiplier = max(SYBIL_SIZE_MIN_MULTIPLIER, min(SYBIL_SIZE_MAX_MULTIPLIER, multiplier))
+                suggested_size = min(exposure * base_pct * multiplier, 5000)
                 
                 group_id = s.get("group_id", "unknown")
                 signal_obj = WhaleSignal(
                     signal_type=WhaleSignalType.LARGE_POSITION,
                     condition_id=s.get("condition_id", ""),
-                    token_id="",  # will be resolved by bridge
+                    token_id="",
                     outcome=outcome,
                     side=side,
-                    confidence=s.get("confidence", 0.5),
-                    target_price=0.5,  # entry at market
+                    confidence=confidence,
+                    target_price=0.5,
                     suggested_size_usd=suggested_size,
                     whale_name=f"sybil_meta_{group_id}",
                     whale_roi=0.0,
@@ -1928,14 +2030,68 @@ class WhaleFollower(Strategy):
                     market_title=s.get("market_title", ""),
                     market_category="",
                     whale_address="",
-                    edge_score=s.get("confidence", 0.5) * 10,
+                    edge_score=confidence * 10,
                 )
                 self._on_signal(signal_obj)
                 processed += 1
-            if processed:
-                self.log.info(f"Sybil meta-whale signals: {processed} queued signals processed")
+            
+            if processed or decayed or deduped or price_rejected or low_conf_rejected:
+                self.log.info(
+                    f"Sybil signals: {total_in} in → {processed} executed, "
+                    f"{decayed} decayed, {deduped} deduped, "
+                    f"{price_rejected} price-rejected, {low_conf_rejected} low-conf"
+                )
         except Exception as e:
             self.log.error(f"Sybil signal check failed: {e}")
+    
+    def _validate_sybil_signal_price(self, signal: dict) -> tuple[bool, str]:
+        """Check current market midpoint hasn't moved against the signal direction.
+        
+        Args:
+            signal: A sybil signal dict from the queue.
+        
+        Returns:
+            (True, reason) if price is favorable for entry,
+            (False, reason) if price has moved too far.
+        """
+        condition_id = signal.get("condition_id", "")
+        if not condition_id:
+            return True, "no_condition_id"
+        
+        now = time.time()
+        cached = self._sybil_price_cache.get(condition_id)
+        if cached and (now - cached[1]) < 30:
+            midpoint = cached[0]
+        else:
+            try:
+                import urllib.request
+                url = f"https://clob.polymarket.com/midpoint?condition_id={condition_id}"
+                req = urllib.request.Request(url, headers={"User-Agent": "nautilus-sybil/1.0"})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read().decode())
+                midpoint_str = data.get("midpoint") or data.get("price")
+                if midpoint_str is None:
+                    return True, "no_midpoint"
+                midpoint = float(midpoint_str)
+                self._sybil_price_cache[condition_id] = (midpoint, now)
+            except Exception as e:
+                self.log.debug(f"Sybil price check failed for {condition_id[:20]}: {e}")
+                return True, "api_failed"  # Fail-open on API error
+        
+        sybil_side = signal.get("side", "BUY YES")
+        if "BUY YES" in sybil_side.upper():
+            max_entry = 0.5 + SYBIL_MAX_PRICE_SLIPPAGE
+            if midpoint > 0.90:
+                return False, f"YES price {midpoint:.3f} near certainty"
+            if midpoint > max_entry:
+                return False, f"YES price {midpoint:.3f} > max entry {max_entry:.3f}"
+            return True, f"YES at {midpoint:.3f}"
+        else:
+            no_price = 1.0 - midpoint
+            max_entry = 0.5 + SYBIL_MAX_PRICE_SLIPPAGE
+            if no_price > max_entry:
+                return False, f"NO price {no_price:.3f} > max entry {max_entry:.3f}"
+            return True, f"NO at {no_price:.3f} (YES={midpoint:.3f})"
 
     # ── Sports Market Detection (Track A) ─────────────────────────────────────
 
