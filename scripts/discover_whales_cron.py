@@ -47,22 +47,50 @@ def ensure_db():
     return conn
 
 
-# Category keywords for market classification
+# ── Category keywords for market classification ──────────────────────────────
+# Non-sports categories use first-match-wins (ordered by specificity).
+# Sports uses a weighted tier system to reduce false positives from generic terms.
+
+# Strong sports keywords — a single match is sufficient for sports classification.
+# These are unmistakably sports: league names, major teams, unequivocal sports events.
+SPORTS_STRONG_KEYWORDS: list[str] = [
+    " nfl ", " nba ", " mlb ", " nhl ", " ncaa ",
+    " ufc ", "mma", "boxing", "wwe", "esports", "fifa",
+    "lakers", "celtics", "warriors", "knicks", "spurs", "thunder", "nuggets",
+    "eagles", "49ers", "ravens", "steelers", "cowboys", "chiefs", "patriots",
+    "yankees", "dodgers", "red sox", "bruins", "sabres", "canadiens",
+    "super bowl", "world cup", "champions league", "premier league",
+    "stanley cup", "world series", "final four", "march madness",
+    "nascar", "pga", "atp", "wta",
+    "dota", "league of legends", "valorant", "csgo",
+]
+
+# Weak sports keywords — generic terms that need multiple matches for confidence.
+# These words appear in many non-sports contexts (e.g., "game theory", "final vote").
+SPORTS_WEAK_KEYWORDS: list[str] = [
+    "soccer", "basketball", "baseball", "hockey", "tennis", "golf",
+    "f1", "formula 1", "grand prix",
+    "football",
+    " vs ", "vs.",
+    "moneyline", "point spread", "spread", "o/u", "total points",
+    "playoffs", "finals", "championship", "tournament",
+    " win ", "goal", "match", "game", "cup", "final", "draft", "round",
+]
+
+# Negative keywords — if present alongside weak-only matches, block sports.
+# These words indicate a non-sports context (legal, economic, political, etc.).
+SPORTS_NEGATIVE_KEYWORDS: list[str] = [
+    "court", "judicial", "lawsuit", "litigation",
+    "inflation", "gdp", "recession", "interest rate",
+    "president", "senator", "congressional",
+    "patent", "fda approval", "clinical trial",
+    "climate", "regulation", "regulatory",
+    "budget", "tax", "funding", "subsidy",
+]
+
+# Non-sports categories use simple first-match-wins.
+# Checked in order — most specific categories first.
 CATEGORY_KEYWORDS = {
-    "sports": [
-        " nfl ", " nba ", " mlb ", " nhl ", " ncaa ", "soccer", " ufc ", "mma", "boxing",
-        "vs.", " vs ", "spread", "o/u", "moneyline", "total points", "point spread",
-        "goal", "match", "game", "cup", "championship", "final", "playoff", " win ",
-        "lakers", "celtics", "warriors", "knicks", "spurs", "thunder", "nuggets",
-        "eagles", "49ers", "ravens", "steelers", "cowboys", "chiefs", "patriots",
-        "yankees", "dodgers", "red sox", "bruins", "sabres", "canadiens",
-        "champions league", "premier league", "world cup", "fifa",
-        "dota", "league of legends", "esports", "f1", "formula", "grand prix",
-        "finals", "playoff", "championship", "super bowl", "draft",
-        "game", "match", "goal", "tournament",
-        "atp", "wta", "golf", "pga", "masters",
-        "lol", "valorant", "csgo", "round",
-    ],
     "crypto": [
         "bitcoin", "btc", "ethereum", "eth", "solana", "crypto", "defi",
         "xrp", "dogecoin", "doge", "shiba", "token", "blockchain", "nft",
@@ -101,14 +129,45 @@ CATEGORY_KEYWORDS = {
 
 
 def classify_market(title: str) -> str:
-    """Classify a market title into a category using keyword matching."""
+    """Classify a market title into a category using weighted keyword matching.
+
+    Non-sports categories use first-match-wins (checked in order).
+    Sports uses a weighted tier system to reduce false positives from
+    generic terms like "game", "final", "draft", etc.
+
+    Args:
+        title: Market title string.
+
+    Returns:
+        Category name: 'sports', 'crypto', 'geopolitics', 'politics',
+        'economics', 'technology', or 'other'.
+    """
     if not title:
         return "other"
     t = " " + title.lower() + " "  # pad for boundary-safe matching
+
+    # ── Stage 1: Check non-sports categories (first-match-wins) ────────
+    # These are checked first because they have specific, non-ambiguous keywords.
+    # If a market matches a crypto/politics/etc keyword first, it's NOT sports.
     for category, keywords in CATEGORY_KEYWORDS.items():
         for kw in keywords:
             if kw in t:
                 return category
+
+    # ── Stage 2: Weighted sports classification ────────────────────────
+    strong_matches = sum(1 for kw in SPORTS_STRONG_KEYWORDS if kw in t)
+    weak_matches = sum(1 for kw in SPORTS_WEAK_KEYWORDS if kw in t)
+    neg_matches = sum(1 for kw in SPORTS_NEGATIVE_KEYWORDS if kw in t)
+
+    if strong_matches >= 1:
+        return "sports"
+
+    if weak_matches >= 3:
+        return "sports"
+
+    if weak_matches >= 2 and neg_matches == 0:
+        return "sports"
+
     return "other"
 
 
