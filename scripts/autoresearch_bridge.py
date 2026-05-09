@@ -25,7 +25,10 @@ import urllib.request
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Any
+PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from components.bitable_writer import write_research_log
 
 logger = logging.getLogger("autoresearch_bridge")
 
@@ -435,7 +438,7 @@ def run_once(state: BridgeState) -> list[dict]:
 
 
 def save_recommendation(rec: dict) -> None:
-    """Append a recommendation to the output file."""
+    """Append a recommendation to the output file and write to Bitable."""
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     try:
         existing = json.loads(OUTPUT_FILE.read_text()) if OUTPUT_FILE.exists() else []
@@ -448,6 +451,20 @@ def save_recommendation(rec: dict) -> None:
     # Keep last 100 recommendations
     existing = existing[-100:]
     OUTPUT_FILE.write_text(json.dumps(existing, indent=2))
+    
+    # Write to Research Log Bitable (only for actionable signals)
+    decision = rec.get("decision", "SKIP")
+    if decision in ("BUY", "WAIT"):
+        try:
+            confidence = rec.get("confidence", 0)
+            reason = rec.get("reason", "")[:100]
+            entry = {
+                "文本": f"{rec.get('market', 'Unknown')} | {decision} | {confidence:.0%} | {reason}",
+                "单选": decision,
+            }
+            write_research_log(entry)
+        except Exception as e:
+            logger.warning("Bitable write failed: %s", e, extra={"error": str(e)})
 
 
 def run_daemon(interval: int = POLL_INTERVAL_SECS) -> None:

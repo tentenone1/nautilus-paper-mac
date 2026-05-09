@@ -1,0 +1,5 @@
+{
+  "receive_id": "oc_9f3d634000ee97d8c71e0b81f55b1484",
+  "msg_type": "interactive",
+  "content": "{\"config\":{\"wide_screen_mode\":true},\"header\":{\"title\":{\"tag\":\"plain_text\",\"content\":\"✅ nautilus-paper.service Recovery\"},\"template\":\"green\"},\"elements\":[{\"tag\":\"markdown\",\"content\":\"**Task**: nautilus-paper.service recovery\\n**Status**: Review → Mac\\n\\n**Investigation:**\\n- 00:15: SIGKILL (OOM) → restart limit exhausted at 00:18\\n- 09:43-09:53: Second crash cluster (exit-code=1)\\n- 09:56:51: Service restarted — running 2h+\\n\\n**Verified Active:**\\n- Systemd: **active** since 09:56:51\\n- Process: 1 PID (418588), 242MB RSS, systemd-supervised\\n- Logs: HOLDING entries, sybil pipeline running\\n- DB: 78 trades/24h, +$19,464 actual PnL\\n\\n**Actions:**\\n1. Fixed 1 stale resolved trade (Bitcoin exit_price set)\\n2. Verified guard file + PID lock + no restart loop\\n3. Root cause: SIGKILL left stale PID file → PID lock blocked restarts\"}]}"
+}

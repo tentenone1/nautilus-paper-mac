@@ -11,6 +11,13 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
+
+# Add project root for bitable_writer import
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from components.bitable_writer import write_trading_signal
 
 
 _DEFAULT_DB_PATH = Path(__file__).parent.parent / "research" / "trades.db"
@@ -140,6 +147,20 @@ def log_trade_to_db(
             condition_id,
         ))
         conn.execute("COMMIT")
+
+        # Write to Trading Hub Bitable on successful trade
+        try:
+            signal_type = "Bullish" if side == "BUY" else "Bearish"
+            signal_entry = {
+                "多行文本": f"{whale_name} | {market_title[:60]} | ${position_size_usd:.0f} | entry={entry_price:.4f}",
+                "Confidence": int(confidence * 100) if confidence else 50,
+                "Signal Type": signal_type,
+                "Source": f"{signal_source} ({category})",
+            }
+            write_trading_signal(signal_entry)
+        except Exception as bitable_error:
+            if log_func:
+                log_func(f"[Bitable] Write failed: {bitable_error}")
 
         if log_func:
             log_func(

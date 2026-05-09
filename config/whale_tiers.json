@@ -1,4 +1,15 @@
 {
+  "category_multipliers": {
+    "description": "Third axis: Kelly adjustment by market category (sports whales historically have better resolution rates)",
+    "sports": { "kelly_adjustment": 1.0, "max_position_usd_multiplier": 1.0 },
+    "geopolitics": { "kelly_adjustment": 0.9, "max_position_usd_multiplier": 0.8 },
+    "crypto": { "kelly_adjustment": 0.8, "max_position_usd_multiplier": 0.7 },
+    "politics": { "kelly_adjustment": 0.85, "max_position_usd_multiplier": 0.75 },
+    "economics": { "kelly_adjustment": 0.9, "max_position_usd_multiplier": 0.8 },
+    "technology": { "kelly_adjustment": 0.85, "max_position_usd_multiplier": 0.75 },
+    "general": { "kelly_adjustment": 0.7, "max_position_usd_multiplier": 0.6 },
+    "unknown": { "kelly_adjustment": 0.5, "max_position_usd_multiplier": 0.5 }
+  },
   "capital_tiers": {
     "A": { "min_volume": 200000, "max_volume": 999999999, "label": "Whale ($200K+)", "kelly_multiplier": 0.8 },
     "B": { "min_volume": 50000, "max_volume": 199999, "label": "Dolphin ($50K+)", "kelly_multiplier": 1.0 },

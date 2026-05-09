@@ -1,0 +1,49 @@
+2026-05-09 11:00:01 [INFO] ============================================================
+2026-05-09 11:00:01 [INFO] MANIPULATION COUNTER-STRATEGY PIPELINE STARTING
+2026-05-09 11:00:01 [INFO] ============================================================
+2026-05-09 11:00:01 [INFO] Step 1: Running entity clustering...
+2026-05-09 11:00:01 [INFO] Entity clustering completed successfully
+2026-05-09 11:00:01 [INFO] AOMCRL, meifei123... (score=0)
+    0xcF609D3256f0f37f0595E5Dc64012Fa3a8fEa6f5-1771809916847, johnbaster... (score=0)
+    LaBradfordSmith22, joblessfinalboss, matanovik... (score=0)
+    p233-0x5d1d9c, p81-0xdb2223... (score=0)
+  Sybil groups: 3
+    0x492442EaB586F242B53bDa933fD5dE859c8A3782-1766317541188, AppleTime67, Dvitaminbets... (1047 trades)
+    0x5d1d9cfd66ee3068c2a8a57dedf1e1b006dcafd2, SMCAOMCRL, meifei123... (335 trades)
+    LaBradfordSmith22, joblessfinalboss, matanovik... (74 trades)
+
+2026-05-09 11:00:01 [INFO] Step 2-4: Matching patterns and enriching profiles...
+2026-05-09 11:00:01 [INFO] Loaded 11 tactics from playbook
+2026-05-09 11:00:01 [INFO] Loaded 5 clusters
+2026-05-09 11:00:01 [INFO] Loaded 431 profiles
+2026-05-09 11:00:01 [INFO] Matched loss-leader in sybil_group: bossoskil1 with 14 partners (1047 trades)
+2026-05-09 11:00:01 [INFO] Matched loss-leader in sybil_group: SMCAOMCRL with 2 partners (335 trades)
+2026-05-09 11:00:01 [INFO] Matched loss-leader in sybil_group: SMCAOMCRL with 2 partners (335 trades)
+2026-05-09 11:00:01 [INFO] Marked bossoskil1 as should_fade=True
+2026-05-09 11:00:01 [INFO] Marked 0x492442EaB586F242B53bDa933fD5dE859c8A3782-1766317541188 as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked AppleTime67 as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked Dvitaminbets as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked Herdonia as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked NewTeamSosed4 as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked Pajamapants as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked Talvez10 as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked Wannac as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked beetlepimp as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked benwyatt as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked loitterer as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked mooseborzoi as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked pilotlady as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked trade-via-Gravia as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked SMCAOMCRL as should_fade=True
+2026-05-09 11:00:01 [INFO] Marked 0x5d1d9cfd66ee3068c2a8a57dedf1e1b006dcafd2 as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked meifei123 as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked SMCAOMCRL as should_fade=True
+2026-05-09 11:00:01 [INFO] Marked 0x5d1d9cfd66ee3068c2a8a57dedf1e1b006dcafd2 as should_follow=True
+2026-05-09 11:00:01 [INFO] Marked meifei123 as should_follow=True
+2026-05-09 11:00:01 [INFO] Saved /home/elon-1/workspace/nautilus-trading/research/whale_profiles.json
+2026-05-09 11:00:01 [INFO] Step 5: Writing audit log...
+2026-05-09 11:00:01 [INFO] Audit log written to /home/elon-1/workspace/nautilus-trading/research/manipulation_audit.log
+2026-05-09 11:00:01 [INFO] ============================================================
+2026-05-09 11:00:01 [INFO] PIPELINE COMPLETE
+2026-05-09 11:00:01 [INFO] Matches: 3 | Profiles enriched: /home/elon-1/workspace/nautilus-trading/research/whale_profiles.json
+2026-05-09 11:00:01 [INFO] ============================================================

@@ -75,6 +75,20 @@ class WhaleTiering:
                 return label
         return "LOW"
 
+    def get_category_multiplier(self, market_category: str) -> dict[str, float]:
+        """Return Kelly adjustment for a market category. Third axis of tiering."""
+        cat_multipliers = self._config.get("category_multipliers", {})
+        return cat_multipliers.get(market_category, cat_multipliers.get("unknown", {"kelly_adjustment": 0.5, "max_position_usd_multiplier": 0.5}))
+
+    def apply_category_adjustment(self, tier_config: dict[str, Any], market_category: str) -> dict[str, Any]:
+        """Apply category-based adjustments to a tier config."""
+        cat_mult = self.get_category_multiplier(market_category)
+        adjusted = tier_config.copy()
+        adjusted["kelly_multiplier"] *= cat_mult.get("kelly_adjustment", 1.0)
+        adjusted["max_position_usd"] = int(adjusted.get("max_position_usd", 100) * cat_mult.get("max_position_usd_multiplier", 1.0))
+        adjusted["category"] = market_category
+        return adjusted
+
     def get_dual_tier(self, capital_tier: str, precision_tier: str) -> str:
         """Return combined tier key like 'B+HIGH'."""
         return f"{capital_tier}+{precision_tier}"

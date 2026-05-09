@@ -1,27 +1,7 @@
 [
   {
-    "content": "Analyze market_resolved 95% loss rate root cause",
-    "activeForm": "Analyzing market_resolved loss rate",
+    "content": "Create components/bitable_writer.py with Feishu Bitable writing functions",
+    "activeForm": "Creating bitable_writer.py module",
     "status": "in_progress"
-  },
-  {
-    "content": "Investigate whale signal processing logic",
-    "activeForm": "Investigating whale signal processing",
-    "status": "pending"
-  },
-  {
-    "content": "Analyze certainty_win vs market_resolved differences",
-    "activeForm": "Analyzing certainty_win exits",
-    "status": "pending"
-  },
-  {
-    "content": "Check individual whale performance data",
-    "activeForm": "Checking whale performance data",
-    "status": "pending"
-  },
-  {
-    "content": "Generate recommendations",
-    "activeForm": "Generating recommendations",
-    "status": "pending"
   }
 ]

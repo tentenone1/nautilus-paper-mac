@@ -9,6 +9,7 @@ Output: research/sybil_positions.json
 import json
 import logging
 import os
+import re
 import sqlite3
 import time
 from urllib.request import Request, urlopen
