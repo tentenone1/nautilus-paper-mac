@@ -25,6 +25,11 @@ from strategies.wf_constants import (
     SPORTS_EXIT_HOURS_BEFORE_EVENT,
     SPORTS_AUTO_EXIT_LOSS,
     SPORTS_DAILY_LOSS_LIMIT,
+    # Phase 2 whitelist constants
+    ALLOWED_CATEGORIES,
+    BLOCKED_CATEGORIES,
+    ALLOWED_WHALE_TYPES,
+    BLOCKED_WHALE_TYPES,
 )
 from strategies.wf_sports import (
     is_sports_market,
@@ -591,3 +596,129 @@ def log_paper_exit_conditions(
             f"PAPER_ENTRY: sports | inst={instrument_id_str[:30]} | "
             f"price={entry_price:.3f} | whale={whale_name}"
         )
+
+
+# ── Phase 2 Whitelist Filter ───────────────────────────────────────────────────
+
+def validate_phase2_signal(
+    *,
+    signal: WhaleSignal,
+    whale_classification: str = "",
+    log,
+) -> bool:
+    """Validate a signal against Phase 2 whitelist filters.
+
+    This function enforces strict category and whale type whitelists for
+    the $100 validation mode. Every signal must pass both checks before
+    entering the position sizing pipeline.
+
+    CRITICAL: This check runs BEFORE position sizing to prevent any
+    exposure to blocked categories or whale types.
+
+    Args:
+        signal: The WhaleSignal to validate.
+        whale_classification: Whale type classification string
+            (e.g., "skilled_human", "degenerate_human"). If empty,
+            defaults to "unknown" which is blocked.
+        log: Logger instance.
+
+    Returns:
+        True if signal passes whitelist checks, False if blocked.
+        Logs the rejection reason for every blocked signal.
+
+    Example rejection log:
+        P2_BLOCK | category=crypto | whale=whale_0xabcd | market=Bitcoin $100k?
+        P2_BLOCK | whale_type=unknown | whale=unknown | market=Politics 2028
+    """
+    # Get market category from signal
+    market_category = getattr(signal, "market_category", "") or ""
+    if not market_category:
+        # Fallback to general if not categorized
+        market_category = "general"
+
+    # Normalize category to lowercase for matching
+    category_lower = market_category.lower()
+
+    # Get whale name for logging
+    whale_name = signal.whale_name or "unknown"
+    market_title = (getattr(signal, "market_title", "") or "")[:50]
+
+    # ── Category Whitelist Check ────────────────────────────────────────
+    # First check BLOCKED_CATEGORIES (hard rejection)
+    if category_lower in BLOCKED_CATEGORIES:
+        log.info(
+            f"P2_BLOCK | category={category_lower} | whale={whale_name} | "
+            f"market={market_title}"
+        )
+        return False
+
+    # Then check ALLOWED_CATEGORIES (must be in whitelist)
+    if category_lower not in ALLOWED_CATEGORIES:
+        # Category not in whitelist = reject
+        log.info(
+            f"P2_BLOCK | category={category_lower} (not whitelisted) | "
+            f"whale={whale_name} | market={market_title}"
+        )
+        return False
+
+    # ── Whale Type Whitelist Check ──────────────────────────────────────
+    # Normalize whale classification
+    whale_type = whale_classification.lower() if whale_classification else "unknown"
+
+    # First check BLOCKED_WHALE_TYPES (hard rejection)
+    if whale_type in BLOCKED_WHALE_TYPES:
+        log.info(
+            f"P2_BLOCK | whale_type={whale_type} | whale={whale_name} | "
+            f"market={market_title}"
+        )
+        return False
+
+    # Then check ALLOWED_WHALE_TYPES (must be in whitelist)
+    if whale_type not in ALLOWED_WHALE_TYPES:
+        # Whale type not in whitelist = reject
+        log.info(
+            f"P2_BLOCK | whale_type={whale_type} (not whitelisted) | "
+            f"whale={whale_name} | market={market_title}"
+        )
+        return False
+
+    # Signal passes all whitelist checks
+    log.info(
+        f"P2_PASS | category={category_lower} | whale_type={whale_type} | "
+        f"whale={whale_name} | market={market_title}"
+    )
+    return True
+
+
+def get_whale_classification(whale_name: str) -> str:
+    """Get whale classification from whale profiles data.
+
+    Looks up the whale classification type from _WHALE_PROFILES.
+    Falls back to "unknown" if whale not found or classification missing.
+
+    Args:
+        whale_name: The whale name to lookup.
+
+    Returns:
+        Classification string (e.g., "skilled_human", "degenerate_human")
+        or "unknown" if not found.
+    """
+    if not whale_name:
+        return "unknown"
+
+    for profile in _WHALE_PROFILES.get("profiles", []):
+        stats = profile.get("stats", {})
+        if stats.get("name") == whale_name:
+            profile_data = profile.get("profile", {})
+            classification = profile_data.get("classification", "")
+            if classification:
+                return classification.lower()
+            # Fallback: check should_fade for degenerate_human
+            if profile_data.get("should_fade", False):
+                return "degenerate_human"
+            # Fallback: check should_follow for skilled_human
+            if profile_data.get("should_follow", False):
+                return "skilled_human"
+
+    # Whale not in profiles = unknown
+    return "unknown"

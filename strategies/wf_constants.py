@@ -195,6 +195,47 @@ MAX_MARKET_EXPOSURE_PCT = 0.05  # 5% of capital
 VALIDATION_CAPITAL_BASE = 1000.0  # $1000 for validation
 
 
+# ── Phase 2 Validation Mode — Whitelist Filters ──────────────────────────────────
+
+# $100 capital validation mode — treat with $100k safety standards
+VALIDATION_CAPITAL = 100.0  # Phase 2 validation bankroll
+VALIDATION_DAILY_LOSS_LIMIT = 10.0  # 10% daily loss cap for $100 mode
+VALIDATION_MAX_POSITION_USD = 2.0  # $2 max single position (2% of $100)
+VALIDATION_MAX_CONCURRENT = 5  # Max 5 concurrent positions
+VALIDATION_KELLY_FRACTION = 0.10  # 10% Kelly (conservative for validation)
+
+# Market category whitelist — only allow proven profitable categories
+ALLOWED_CATEGORIES = frozenset({
+    "politics",      # 55%+ win rate, high volume
+    "geopolitics",   # 58% win rate, conflict markets
+    "general",       # Default category, mixed performance
+})
+
+# Blocked categories — reject unprofitable/risky categories
+BLOCKED_CATEGORIES = frozenset({
+    "crypto",        # 42% win rate, high volatility
+    "sports",        # 38% win rate, time-sensitive exits
+    "entertainment", # Unpredictable outcomes
+    "finance",       # Low signal quality
+    "unknown",       # Unclassified markets
+})
+
+# Whale type whitelist — only follow proven whale classifications
+ALLOWED_WHALE_TYPES = frozenset({
+    "skilled_human",       # Consistent profitable traders
+    "sacrificial_account", # Entity cluster sacrificial accounts
+    "degenerate_human",    # High-volume risk-takers (some profitable)
+})
+
+# Blocked whale types — reject unverified/unprofitable whale types
+BLOCKED_WHALE_TYPES = frozenset({
+    "unknown",         # Unclassified whales
+    "mixed_entity",    # Entity clusters with mixed signals
+    "whale",           # Generic classification (no track record)
+    "bob",             # Deprecated classification
+})
+
+
 # ── Sports Market Keywords ───────────────────────────────────────────────────
 
 SPORTS_KEYWORDS: list[str] = [
