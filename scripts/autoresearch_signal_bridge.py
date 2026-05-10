@@ -28,6 +28,11 @@ QUEUE_FILE = os.path.join(BASE_DIR, "research", "autoresearch_signal_queue.json"
 STATE_FILE = os.path.join(BASE_DIR, "research", "autoresearch_bridge_state.json")
 CLOB_MARKET_URL = "https://clob.polymarket.com/markets/{}"
 
+# ─── Quality Gates ─────────────────────────────────────────────────────────────
+CONFIDENCE_GATE = 0.65      # Minimum confidence for BUY to pass to execution
+KELLY_MIN = 0.01            # 1% floor
+KELLY_MAX = 0.125           # 12.5% ceiling (matches whale_tiers.json max_position_pct)
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -135,8 +140,12 @@ def main() -> int:
     with open(RECS_FILE) as f:
         recommendations: list[dict] = json.load(f)
 
-    # Filter for BUY recommendations not yet processed
-    buy_recs = [r for r in recommendations if r.get("decision") == "BUY"]
+    # Filter for BUY recommendations not yet processed (with confidence gate)
+    buy_recs = [
+        r for r in recommendations
+        if r.get("decision") == "BUY"
+        and r.get("confidence", 0) >= CONFIDENCE_GATE
+    ]
     new_recs = [r for r in buy_recs if make_signal_key(r) not in state]
 
     if not new_recs:
@@ -160,6 +169,7 @@ def main() -> int:
         entry_price = rec.get("entry_price", 0.5)
         confidence = rec.get("confidence", 0.5)
         kelly = rec.get("kelly_fraction", 0.15)
+        kelly = max(KELLY_MIN, min(KELLY_MAX, kelly))  # Clamp to bounds
         reason = rec.get("reason", "") or ""
         hold_hours = rec.get("hold_hours", 24)
 

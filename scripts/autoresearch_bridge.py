@@ -51,6 +51,11 @@ MARKETS_API: str = "https://data-api.polymarket.com/markets?conditionId={}&limit
 
 NOISE_TITLES: list[str] = ["highest temperature", "Bitcoin Up or Down", "Ethereum Up or Down", "Solana Up or Down"]
 
+# ─── Quality Gates ─────────────────────────────────────────────────────────────
+KELLY_MIN = 0.01            # 1% floor
+KELLY_MAX = 0.125           # 12.5% ceiling (matches whale_tiers.json max_position_pct)
+CONFIDENCE_MIN = 0.65       # Minimum confidence for actionable signal
+
 
 class BridgeError(Exception):
     """Error in autoresearch bridge operations."""
@@ -228,8 +233,21 @@ def lookup_whales(condition_id: str) -> list[dict]:
         return []
 
 
-def analyze_market(detection: dict, market_info: Optional[dict] = None) -> dict:
-    """Analyze a market detection and return a trade recommendation."""
+def analyze_market(
+    detection: dict,
+    market_info: Optional[dict] = None,
+    midpoints: Optional[dict] = None,
+) -> dict:
+    """Analyze a market detection and return a trade recommendation.
+    
+    Args:
+        detection: Signal detection dict with market name, price, age.
+        market_info: Polymarket market metadata (category, resolution date).
+        midpoints: Current CLOB midpoint prices for outcomes.
+    
+    Returns:
+        Trade recommendation dict with decision, confidence, prices, Kelly.
+    """
     market = detection.get("market", "Unknown")
     price = detection.get("entry_price") or detection.get("lowest_price", 0.5)
     age = detection.get("age_seconds", 0)
@@ -255,28 +273,61 @@ def analyze_market(detection: dict, market_info: Optional[dict] = None) -> dict:
                 ))
             whale_ctx = "\n".join(ctx_lines)
     
+    # Build midpoint context (NEW: inject live prices into prompt)
+    midpoint_lines = ""
+    if midpoints:
+        mp_entries = "\n".join(f"  {k}: ${v:.4f}" for k, v in midpoints.items())
+        midpoint_lines = f"\nLIVE CLOB MIDPOINTS:\n{mp_entries}"
+    
+    # Build market metadata context (NEW: resolution date, category)
+    meta_ctx = ""
+    if market_info:
+        end_date = market_info.get("end_date_iso") or market_info.get("endDate", "")
+        category = market_info.get("category", "")
+        volume = market_info.get("volume", 0) or 0
+        meta_ctx = f"""
+MARKET METADATA:
+  Category: {category or 'unknown'}
+  Resolution: {end_date or 'unknown'}
+  24h Volume: ${volume:,.0f}"""
+    
+    # Time-awareness note
+    time_note = ""
+    if age > 1800:
+        time_note = "\n⚠️ Signal is over 30 min old. Verify price before entering."
+    elif age > 300:
+        time_note = "\n⚡ Signal is 5+ min old. Check midpoint freshness."
+    
     prompt = f"""Analyze this Polymarket market and output a trade recommendation as JSON only.
 
 MARKET: {market}
-Lowest entry: ${price:.2f}
-Age: {age:.0f}s
+Detection price: ${price:.2f}
+Signal age: {age:.0f}s{time_note}
 Trades in last scan: {detection.get('trades_count', 0)}
-Detection type: {detection.get('type', 'unknown')}
+Detection type: {detection.get('type', 'unknown')}{midpoint_lines}{meta_ctx}
 {f"Whale Activity:\n{whale_ctx}" if whale_ctx else ""}
 
-Evaluate: Is this a coordinated whale pump or random noise?
-If actionable, what's the entry, target, stop, and Kelly size?
+EVALUATION:
+1. Price edge: Is detection price below current midpoint?
+2. Whale quality: High-trust whales aligned?
+3. Time horizon: Enough time before resolution?
+4. Category: Reliable resolution history?
+
+DECISION RULES:
+- BUY: confidence > 0.65, clear price edge, whale support
+- WAIT: uncertain, low liquidity, resolution < 6h
+- SKIP: noise, conflicting signals, no edge
 
 OUTPUT (JSON only):
 {{
   "market": "name",
   "decision": "BUY | WAIT | SKIP",
   "confidence": 0.0-1.0,
-  "reason": "brief reason",
+  "reason": "brief reason citing specific factors",
   "entry_price": 0.0,
   "target_price": 0.0,
   "stop_price": 0.0,
-  "kelly_fraction": 0.0,
+  "kelly_fraction": 0.0-0.125,
   "hold_hours": 0
 }}"""
     
@@ -313,6 +364,9 @@ OUTPUT (JSON only):
                 except json.JSONDecodeError:
                     pass
     if last_valid:
+        # Clamp Kelly fraction to bounds (NEW: safety gate)
+        if "kelly_fraction" in last_valid:
+            last_valid["kelly_fraction"] = max(KELLY_MIN, min(KELLY_MAX, last_valid["kelly_fraction"]))
         return last_valid
 
     # Fallback: try partial parse from truncated output
@@ -328,7 +382,7 @@ OUTPUT (JSON only):
                 "entry_price": price,
                 "target_price": min(price * 1.5, 0.95),
                 "stop_price": max(price * 0.9, 0.05),
-                "kelly_fraction": 0.1,
+                "kelly_fraction": max(KELLY_MIN, min(KELLY_MAX, 0.1)),  # Clamped fallback
                 "hold_hours": 24,
                 "whale_context": whale_ctx if whale_ctx else "",
             }
@@ -357,22 +411,30 @@ def load_detections() -> list[dict]:
 
 
 def is_noise(detection: dict) -> bool:
-    """Check if detection matches noise patterns."""
+    """Check if detection matches noise patterns (regex-based)."""
+    import re
     market = (detection.get("market", "") or "").lower()
     title = (detection.get("title", "") or "").lower()
-    combined = market + title
-    for noise in NOISE_TITLES + ["bitcoin", "temperature", "weather"]:
-        if noise.lower() in combined:
-            return True
-    return False
+    combined = market + " " + title
+    
+    # Regex patterns for known junk markets
+    noise_patterns = [
+        r"highest\s+temperature",
+        r"(bitcoin|ethereum|solana)\s+(up|down)\s+(up|down)",
+        r"weather\s+(in|for)",
+        r"daily\s+(high|low)\s+temperature",
+        r"will\s+\w+\s+score\s+(over|under)",
+    ]
+    return any(re.search(p, combined, re.I) for p in noise_patterns)
 
 
 def make_detection_key(detection: dict) -> str:
-    """Create a unique key for a detection based on timestamp and market."""
+    """Create a unique key for a detection (includes condition_id for collision safety)."""
     ts = detection.get("detected_at") or detection.get("timestamp", "")
     market = detection.get("market", "") or detection.get("title", "")
     whale = detection.get("whale_name", "")
-    return f"{ts}:{whale}:{market[:50]}"
+    cid = detection.get("condition_id", "")  # NEW: prevent collisions
+    return f"{cid}:{ts}:{whale}:{market[:50]}"
 
 
 def run_once(state: BridgeState) -> list[dict]:
@@ -404,7 +466,7 @@ def run_once(state: BridgeState) -> list[dict]:
         market_info = get_market_info(cid) if cid else None
         midpoints = check_midpoint(cid) if cid else {}
         
-        rec = analyze_market(det, market_info)
+        rec = analyze_market(det, market_info, midpoints)
         rec["timestamp"] = datetime.now(timezone.utc).isoformat()
         rec["condition_id"] = cid
         rec["detection_price"] = det.get("entry_price") or det.get("lowest_price")
