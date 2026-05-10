@@ -251,6 +251,10 @@ class WhaleFollowerConfig(StrategyConfig, frozen=True):
     max_open_positions: int = 50
     # Max total gross exposure as % of bankroll (hard cap on aggregate position size)
     max_total_exposure_pct: float = 5.0  # Total open positions capped at 500% of bankroll
+    # Phase 1 risk control limits (required by wf_position_checks.py)
+    max_single_position_pct: float = 0.02  # Max 2% of capital per position
+    max_market_exposure_pct: float = 0.05  # Max 5% of capital per market
+    validation_capital_base: float = 1000.0  # Fixed capital base for validation mode
     # Daily loss limit: stop trading if daily loss exceeds this
     daily_loss_limit: float = 10000.0
     # Sports-specific daily loss limit: stop sports trading if sports daily loss exceeds this
