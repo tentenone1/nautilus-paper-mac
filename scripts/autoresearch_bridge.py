@@ -35,8 +35,9 @@ logger = logging.getLogger("autoresearch_bridge")
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 POLL_INTERVAL_SECS: int = 300
-LLM_TIMEOUT_SECS: int = 300
+LLM_TIMEOUT_SECS: int = 60
 API_TIMEOUT_SECS: int = 10
+RUN_TIMEOUT_SECS: int = 110  # Max wall-clock time for single pass (10s buffer for 120s cron)
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 STATE_FILE: Path = PROJECT_ROOT / "research" / "autoresearch_state.json"
@@ -437,9 +438,10 @@ def make_detection_key(detection: dict) -> str:
     return f"{cid}:{ts}:{whale}:{market[:50]}"
 
 
-def run_once(state: BridgeState) -> list[dict]:
+def run_once(state: BridgeState, timeout_secs: int = RUN_TIMEOUT_SECS) -> list[dict]:
     """Run a single analysis pass. Returns list of new recommendations."""
-    logger.info("Starting analysis pass", extra={})
+    logger.info("Starting analysis pass (timeout=%ds)", timeout_secs, extra={"timeout": timeout_secs})
+    start_time = time.time()
     
     detections = load_detections()
     logger.info("Loaded %d detections", len(detections), extra={"count": len(detections)})
@@ -458,9 +460,25 @@ def run_once(state: BridgeState) -> list[dict]:
     logger.info("%d new detections to analyze", len(new_detections), extra={"count": len(new_detections)})
     
     recommendations = []
-    for det in new_detections[-5:]:  # Limit to 5 most recent
+    processed_count = 0
+    timeout_skipped = 0
+    
+    for det in new_detections[-5:]:  # Limit to 5 most recent (time is primary limiter)
+        elapsed = time.time() - start_time
+        remaining = timeout_secs - elapsed
+        
+        # Check if we have enough time for at least one full cycle (30s minimum)
+        if remaining < 30:
+            logger.warning(
+                "Time budget exceeded, breaking after %d detections (%.1fs elapsed, %.1fs remaining)",
+                processed_count, elapsed, remaining,
+                extra={"processed": processed_count, "elapsed": elapsed, "remaining": remaining}
+            )
+            timeout_skipped = len(new_detections[-5:]) - processed_count
+            break
+        
         market_name = det.get("market", "?")[:50]
-        logger.info("Analyzing: %s", market_name, extra={"market": market_name})
+        logger.info("Analyzing: %s (%.1fs remaining)", market_name, remaining, extra={"market": market_name})
         
         cid = det.get("condition_id", "")
         market_info = get_market_info(cid) if cid else None
@@ -494,7 +512,16 @@ def run_once(state: BridgeState) -> list[dict]:
         
         # Save incrementally
         save_recommendation(rec)
+        processed_count += 1
         time.sleep(1)
+    
+    total_elapsed = time.time() - start_time
+    total_pending = len(new_detections[-5:])
+    logger.info(
+        "Run timeout: processed %d of %d detections in %.1fs (%d skipped due to time)",
+        processed_count, total_pending, total_elapsed, timeout_skipped,
+        extra={"processed": processed_count, "total": total_pending, "elapsed": total_elapsed, "skipped": timeout_skipped}
+    )
     
     return recommendations
 
@@ -529,14 +556,14 @@ def save_recommendation(rec: dict) -> None:
             logger.warning("Bitable write failed: %s", e, extra={"error": str(e)})
 
 
-def run_daemon(interval: int = POLL_INTERVAL_SECS) -> None:
+def run_daemon(interval: int = POLL_INTERVAL_SECS, timeout_secs: int = RUN_TIMEOUT_SECS) -> None:
     """Run as continuous daemon with given interval."""
-    logger.info("Starting autoresearch daemon (interval=%ds)", interval, extra={"interval": interval})
+    logger.info("Starting autoresearch daemon (interval=%ds, timeout=%ds)", interval, timeout_secs, extra={"interval": interval, "timeout": timeout_secs})
     state = BridgeState.load(STATE_FILE)
     try:
         while True:
             state.last_run = datetime.now(timezone.utc).isoformat()
-            run_once(state)
+            run_once(state, timeout_secs=timeout_secs)
             state.save(STATE_FILE)
             time.sleep(interval)
     except KeyboardInterrupt:
@@ -559,6 +586,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Autoresearch Bridge - Analyze detections and produce trade recommendations")
     parser.add_argument("--once", action="store_true", help="Run once and exit (for cron)")
     parser.add_argument("--interval", type=int, default=POLL_INTERVAL_SECS, help=f"Polling interval (default: {POLL_INTERVAL_SECS})")
+    parser.add_argument("--timeout", type=int, default=RUN_TIMEOUT_SECS, help=f"Max seconds for single pass (default: {RUN_TIMEOUT_SECS})")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
     
@@ -566,15 +594,15 @@ def main() -> None:
     state = BridgeState.load(STATE_FILE)
     
     if args.once:
-        logger.info("Running single pass", extra={})
-        recommendations = run_once(state)
+        logger.info("Running single pass (timeout=%ds)", args.timeout, extra={"timeout": args.timeout})
+        recommendations = run_once(state, timeout_secs=args.timeout)
         state.last_run = datetime.now(timezone.utc).isoformat()
         state.save(STATE_FILE)
         buys = sum(1 for r in recommendations if r.get("decision") == "BUY")
         print(f"Analyzed {len(recommendations)} detections → {buys} BUY signals")
         sys.exit(0)
     else:
-        run_daemon(interval=args.interval)
+        run_daemon(interval=args.interval, timeout_secs=args.timeout)
 
 
 if __name__ == "__main__":
