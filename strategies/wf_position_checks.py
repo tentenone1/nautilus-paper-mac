@@ -2,6 +2,8 @@
 
 Standalone functions extracted from wf_exits.py for modularity.
 All state passed as explicit parameters.
+
+Phase 1 risk control: position/exposure limits and kill switch mechanism.
 """
 
 from __future__ import annotations
@@ -16,7 +18,22 @@ from strategies.wf_constants import (
     CERTAINTY_WIN_THRESHOLD,
     MAX_SANE_RETURN,
     SPORTS_AUTO_EXIT_LOSS,
+    MAX_SINGLE_POSITION_PCT,
+    MAX_TOTAL_EXPOSURE_PCT,
+    MAX_MARKET_EXPOSURE_PCT,
+    VALIDATION_CAPITAL_BASE,
 )
+
+# ── Phase 1 Validation Integration ──────────────────────────────────────────────
+# Import validation modules with backward compatibility (graceful degradation)
+try:
+    from components.validation.event_logger import EventType, log_event
+    _validation_available = True
+except ImportError:
+    _validation_available = False
+    EventType = None
+    log_event = None
+
 from strategies.wf_exits import (
     _resolve_exit_price_with_deps,
     exit_all_positions,
@@ -280,3 +297,219 @@ def check_daily_loss_limit(
         return daily_pnl, daily_pnl_date, True
 
     return daily_pnl, daily_pnl_date, False
+
+
+# ── Phase 1 Risk Control: Position/Exposure Limits ──────────────────────────────────
+
+def get_current_total_exposure(
+    *,
+    cache,
+    open_positions: dict,
+) -> float:
+    """Calculate total notional exposure of all open positions.
+    
+    Args:
+        cache: Nautilus Cache.
+        open_positions: dict of inst_key -> position info.
+        
+    Returns:
+        Total exposure in USD (sum of all position notional values).
+    """
+    total = 0.0
+    for inst_key, pos_info in open_positions.items():
+        try:
+            inst_id = InstrumentId.from_str(inst_key)
+            positions = cache.positions_open(instrument_id=inst_id)
+            if positions:
+                for pos in positions:
+                    qty = (
+                        pos.quantity.as_double()
+                        if hasattr(pos.quantity, "as_double")
+                        else float(pos.quantity)
+                    )
+                    avg_open = (
+                        pos.avg_px_open.as_double()
+                        if hasattr(pos.avg_px_open, "as_double")
+                        else 0.0
+                    )
+                    total += qty * avg_open
+        except Exception:
+            # Fallback to stored position info
+            size = pos_info.get("size", 0.0)
+            entry_price = pos_info.get("entry_price", 0.0)
+            total += size * entry_price
+    return total
+
+
+def get_market_exposure(
+    *,
+    cache,
+    instrument_id,
+    open_positions: dict,
+) -> float:
+    """Calculate exposure for a specific market/instrument.
+    
+    Args:
+        cache: Nautilus Cache.
+        instrument_id: InstrumentId to check.
+        open_positions: dict of inst_key -> position info.
+        
+    Returns:
+        Exposure in USD for this specific instrument.
+    """
+    inst_key = str(instrument_id)
+    exposure = 0.0
+    
+    # Check Nautilus cache
+    positions = cache.positions_open(instrument_id=instrument_id)
+    if positions:
+        for pos in positions:
+            qty = (
+                pos.quantity.as_double()
+                if hasattr(pos.quantity, "as_double")
+                else float(pos.quantity)
+            )
+            avg_open = (
+                pos.avg_px_open.as_double()
+                if hasattr(pos.avg_px_open, "as_double")
+                else 0.0
+            )
+            exposure += qty * avg_open
+    
+    # Check internal registry
+    if inst_key in open_positions:
+        pos_info = open_positions[inst_key]
+        size = pos_info.get("size", 0.0)
+        entry_price = pos_info.get("entry_price", 0.0)
+        exposure = max(exposure, size * entry_price)
+    
+    return exposure
+
+
+def check_position_limits(
+    *,
+    config,
+    cache,
+    instrument_id,
+    proposed_size_usd: float,
+    open_positions: dict,
+    log,
+    run_id: str = "",
+    mode: str = "paper",
+) -> tuple[bool, str]:
+    """Check all Phase 1 position/exposure limits before entering.
+    
+    Args:
+        config: WhaleFollowerConfig.
+        cache: Nautilus Cache.
+        instrument_id: InstrumentId for proposed position.
+        proposed_size_usd: Proposed position size in USD.
+        open_positions: dict of inst_key -> position info.
+        log: Logger.
+        run_id: Validation run ID for event logging.
+        mode: Execution mode (paper/live).
+        
+    Returns:
+        Tuple of (allowed: bool, reason: str).
+        If not allowed, reason describes which limit was breached.
+    """
+    # Determine capital base (use validation capital or config bankroll)
+    capital = config.validation_capital_base if config.validation_capital_base > 0 else config.bankroll
+    
+    # 1. Check MAX_SINGLE_POSITION (2% of capital)
+    max_single = capital * config.max_single_position_pct
+    if proposed_size_usd > max_single:
+        reason = (
+            f"MAX_SINGLE_POSITION breached: ${proposed_size_usd:,.2f} > "
+            f"${max_single:,.2f} ({config.max_single_position_pct:.0%} of ${capital:,.0f})"
+        )
+        log.warning(reason)
+        return False, reason
+    
+    # 2. Check MAX_TOTAL_EXPOSURE (20% of capital)
+    current_total = get_current_total_exposure(cache=cache, open_positions=open_positions)
+    max_total = capital * config.max_total_exposure_pct
+    if current_total + proposed_size_usd > max_total:
+        reason = (
+            f"MAX_TOTAL_EXPOSURE breached: ${current_total:,.2f} + ${proposed_size_usd:,.2f} > "
+            f"${max_total:,.2f} ({config.max_total_exposure_pct:.0%} of ${capital:,.0f})"
+        )
+        log.warning(reason)
+        return False, reason
+    
+    # 3. Check MAX_MARKET_EXPOSURE (5% of capital per market)
+    current_market = get_market_exposure(cache=cache, instrument_id=instrument_id, open_positions=open_positions)
+    max_market = capital * config.max_market_exposure_pct
+    if current_market + proposed_size_usd > max_market:
+        reason = (
+            f"MAX_MARKET_EXPOSURE breached: ${current_market:,.2f} + ${proposed_size_usd:,.2f} > "
+            f"${max_market:,.2f} ({config.max_market_exposure_pct:.0%} of ${capital:,.0f}) for {instrument_id}"
+        )
+        log.warning(reason)
+        return False, reason
+    
+    # All checks passed
+    return True, ""
+
+
+def trigger_kill_switch(
+    *,
+    config,
+    cache,
+    log,
+    reason: str,
+    run_id: str = "",
+    mode: str = "paper",
+    strategy_id: str = "whale_follower",
+    cancel_orders_func=None,
+) -> bool:
+    """Trigger kill switch: stop trading, cancel orders, emit event.
+    
+    Args:
+        config: WhaleFollowerConfig (will set _kill_switch_breached=True).
+        cache: Nautilus Cache.
+        log: Logger.
+        reason: Reason for kill switch activation.
+        run_id: Validation run ID for event logging.
+        mode: Execution mode (paper/live).
+        strategy_id: Strategy identifier.
+        cancel_orders_func: Optional callable to cancel open orders.
+        
+    Returns:
+        True if kill switch was triggered successfully.
+    """
+    # Set kill switch flag on config
+    config._kill_switch_breached = True
+    
+    # Log incident
+    log.error(
+        f"KILL_SWITCH_TRIGGERED: {reason}. "
+        f"Stopping all trading and canceling open orders."
+    )
+    
+    # Cancel all open orders if function provided
+    if cancel_orders_func:
+        try:
+            cancel_orders_func()
+            log.info("All open orders canceled due to kill switch")
+        except Exception as e:
+            log.error(f"Failed to cancel orders: {e}")
+    
+    # Emit KILL_SWITCH_TRIGGERED event (graceful degradation)
+    if _validation_available and log_event and EventType:
+        try:
+            log_event(
+                event_type=EventType.KILL_SWITCH_TRIGGERED,
+                run_id=run_id,
+                mode=mode,
+                strategy_id=strategy_id,
+                payload={
+                    "reason": reason,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            )
+            log.info("KILL_SWITCH_TRIGGERED event logged")
+        except Exception as e:
+            log.warning(f"Failed to emit KILL_SWITCH_TRIGGERED event: {e}")
+    
+    return True

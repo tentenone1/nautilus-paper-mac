@@ -23,6 +23,11 @@ from strategies.wf_constants import (
     LOW_CASH_ALERT_PCT,
 )
 from strategies.wf_kelly import kelly_size, adjust_size_for_liquidity
+from strategies.wf_position_checks import (
+    check_position_limits,
+    trigger_kill_switch,
+    get_current_total_exposure,
+)
 
 
 def enter_position(
@@ -49,6 +54,10 @@ def enter_position(
     last_exit_time: dict,
     whale_tiering,
     clob_client,
+    # Phase 1 validation parameters
+    run_id: str = "",
+    mode: str = "paper",
+    cancel_orders_func=None,
 ) -> bool:
     """Enter a Kelly-sized position.
 
@@ -186,21 +195,30 @@ def enter_position(
         )
         return False
 
-    # ── Gross exposure cap ────────────────────────────────────────────────
-    current_exposure = _current_gross_exposure(cache, config.instrument_ids)
-    exposure_max = config.bankroll * config.max_total_exposure_pct
-    if current_exposure + size_usd > exposure_max:
-        log_func(
-            f"Exposure cap: ${current_exposure:,.0f} + ${size_usd:,.0f} > "
-            f"${exposure_max:,.0f} (${config.bankroll:,.0f} x "
-            f"{config.max_total_exposure_pct:.0%}), skipping"
+    # ── Phase 1 Risk Control: Position/Exposure Limits ─────────────────────
+    # Check MAX_SINGLE_POSITION, MAX_TOTAL_EXPOSURE, MAX_MARKET_EXPOSURE
+    allowed, reason = check_position_limits(
+        config=config,
+        cache=cache,
+        instrument_id=inst_id,
+        proposed_size_usd=size_usd,
+        open_positions=open_positions,
+        log=log_func,
+        run_id=run_id,
+        mode=mode,
+    )
+    if not allowed:
+        # Position limits breached - trigger kill switch
+        trigger_kill_switch(
+            config=config,
+            cache=cache,
+            log=log_func,
+            reason=reason,
+            run_id=run_id,
+            mode=mode,
+            cancel_orders_func=cancel_orders_func,
         )
         return False
-    if current_exposure > exposure_max * 0.8:
-        log_func.warning(
-            f"High exposure warning: ${current_exposure:,.0f} / ${exposure_max:,.0f} "
-            f"({current_exposure / exposure_max:.0%} of cap)"
-        )
 
     # ── Max open positions ────────────────────────────────────────────────
     open_count = sum(

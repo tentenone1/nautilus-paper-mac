@@ -180,6 +180,21 @@ LIQUIDITY_TIER3_MULTIPLIER = 0.50
 LIQUIDITY_TIER2_MULTIPLIER = 0.75
 
 
+# ── Phase 1 Risk Control Limits ───────────────────────────────────────────────
+
+# Maximum single position size as % of capital (per position cap)
+MAX_SINGLE_POSITION_PCT = 0.02  # 2% of capital
+
+# Maximum total exposure as % of capital (total portfolio exposure)
+MAX_TOTAL_EXPOSURE_PCT = 0.20  # 20% of capital
+
+# Maximum per-market exposure as % of capital (per token_id exposure)
+MAX_MARKET_EXPOSURE_PCT = 0.05  # 5% of capital
+
+# Fixed capital base for validation mode (Phase 1 testing)
+VALIDATION_CAPITAL_BASE = 1000.0  # $1000 for validation
+
+
 # ── Sports Market Keywords ───────────────────────────────────────────────────
 
 SPORTS_KEYWORDS: list[str] = [
@@ -205,8 +220,15 @@ class WhaleFollowerConfig(StrategyConfig, frozen=True):
     take_profit_pct: float = 0.30
     max_position_pct: float = 0.10
     max_open_positions: int = 50
-    # Max total gross exposure as % of bankroll (hard cap on aggregate position size)
-    max_total_exposure_pct: float = 5.0  # Total open positions capped at 500% of bankroll
+    # Phase 1 risk control limits
+    # Max single position size as % of capital (per position cap - 2%)
+    max_single_position_pct: float = 0.02
+    # Max total exposure as % of capital (total portfolio exposure - 20%)
+    max_total_exposure_pct: float = 0.20
+    # Max per-market exposure as % of capital (per token_id exposure - 5%)
+    max_market_exposure_pct: float = 0.05
+    # Fixed capital base for validation mode
+    validation_capital_base: float = 1000.0
     # Daily loss limit: stop trading if daily loss exceeds this
     daily_loss_limit: float = 500.0
     sports_daily_loss_limit: float = 2000.0

@@ -101,6 +101,12 @@ from strategies.wf_sports import is_sports_market, get_market_event_time, should
 from strategies.wf_db_ops import log_trade_to_db, recover_open_positions
 from strategies.wf_signal_proc import on_signal, scan_whale_positions, process_trade_buffer, llm_score_signal
 from strategies.wf_position_checks import check_all_positions, check_daily_loss_limit
+from strategies.wf_position_checks import (
+    check_position_limits,
+    trigger_kill_switch,
+    get_current_total_exposure,
+    get_market_exposure,
+)
 
 from py_clob_client.client import ClobClient
 from py_clob_client.constants import POLYGON
@@ -301,6 +307,7 @@ class WhaleFollower(Strategy):
         self._daily_pnl_date: str = ""
         self._daily_loss_limit: float = self.config.daily_loss_limit  # Stop trading if daily loss exceeds this
         self._daily_loss_breached: bool = False  # Permanently stops trading until next day
+        self._kill_switch_breached: bool = False  # Phase 1: stops trading when position limits breached
         self._sports_daily_pnl: float = 0.0
         self._sports_daily_pnl_date: str = ""
         self._sports_daily_loss_breached: bool = False
@@ -1387,6 +1394,11 @@ class WhaleFollower(Strategy):
         _validation_signal_id: str = "", _validation_snapshot_id: str = "",
     ) -> None:
         """Enter Kelly-sized position."""
+        # ── Phase 1 Risk Control: Kill Switch Check ─────────────────────────────
+        if self._kill_switch_breached:
+            self.log.warning(f"KILL_SWITCH active - rejecting signal for {market_title[:40]}")
+            return
+
         inst_id = instrument_id or self.config.instrument_id
         
         # Whale name will be stored after order creation (using order.client_order_id)
@@ -1447,21 +1459,31 @@ class WhaleFollower(Strategy):
             )
             return
 
-        # Gross exposure cap check: total open position cost must not exceed max % of bankroll
-        current_exposure = self._current_gross_exposure()
-        exposure_max = self.config.bankroll * self.config.max_total_exposure_pct
-        if current_exposure + size_usd > exposure_max:
-            self.log.info(
-                f"Exposure cap: ${current_exposure:,.0f} + ${size_usd:,.0f} > "
-                f"${exposure_max:,.0f} (${self.config.bankroll:,.0f} x {self.config.max_total_exposure_pct:.0%}), skipping"
+        # ── Phase 1 Risk Control: Position/Exposure Limits ───────────────────────
+        # Check MAX_SINGLE_POSITION, MAX_TOTAL_EXPOSURE, MAX_MARKET_EXPOSURE
+        allowed, reason = check_position_limits(
+            config=self.config,
+            cache=self.cache,
+            instrument_id=inst_id,
+            proposed_size_usd=size_usd,
+            open_positions=self._open_positions,
+            log=self.log,
+            run_id=self._validation_run_id,
+            mode=get_current_mode(),
+        )
+        if not allowed:
+            # Position limits breached - trigger kill switch
+            trigger_kill_switch(
+                config=self.config,
+                cache=self.cache,
+                log=self.log,
+                reason=reason,
+                run_id=self._validation_run_id,
+                mode=get_current_mode(),
+                strategy_id="whale_follower",
+                cancel_orders_func=self.cancel_all_open_orders,
             )
             return
-        # Warning when exposure exceeds 80% of cap
-        if current_exposure > exposure_max * 0.8:
-            self.log.warning(
-                f"High exposure warning: ${current_exposure:,.0f} / ${exposure_max:,.0f} "
-                f"({current_exposure/exposure_max:.0%} of cap)"
-            )
 
         # Max open positions check
         open_count = len(self._open_positions)
@@ -1787,6 +1809,22 @@ class WhaleFollower(Strategy):
             open_positions = self.cache.positions_open(instrument_id=inst_id)
             if open_positions and open_positions[0].quantity.as_double() != 0:
                 self.exit_position(inst_id, exit_reason="emergency_exit_all")
+
+    def cancel_all_open_orders(self) -> None:
+        """Cancel ALL pending open orders (kill switch).
+
+        Phase 1 risk control: when position limits are breached,
+        cancel all pending orders to stop trading immediately.
+        """
+        canceled_count = 0
+        for order in self.cache.orders_open():
+            try:
+                self.cancel_order(order)
+                canceled_count += 1
+                self.log.info(f"Canceled order {order.client_order_id}")
+            except Exception as e:
+                self.log.error(f"Failed to cancel order {order.client_order_id}: {e}")
+        self.log.info(f"KILL_SWITCH: canceled {canceled_count} open orders")
 
 
     def _recover_open_positions(self) -> None:
