@@ -28,6 +28,16 @@ from .db_router import (
     set_trade_mode,
 )
 
+from .snapshot_store import (
+    SignalSnapshot,
+    SNAPSHOTS_DIR,
+    freeze_snapshot,
+    load_snapshot,
+    verify_snapshot,
+    list_snapshots,
+    get_snapshot_path,
+)
+
 __all__ = [
     # Event logger
     "EventType",
@@ -51,4 +61,12 @@ __all__ = [
     "get_db_path",
     "get_current_mode",
     "set_trade_mode",
+    # Snapshot store
+    "SignalSnapshot",
+    "SNAPSHOTS_DIR",
+    "freeze_snapshot",
+    "load_snapshot",
+    "verify_snapshot",
+    "list_snapshots",
+    "get_snapshot_path",
 ]
