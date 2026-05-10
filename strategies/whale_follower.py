@@ -1487,6 +1487,7 @@ class WhaleFollower(Strategy):
                 strategy_id="whale_follower",
                 cancel_orders_func=self.cancel_all_open_orders,
             )
+            self._kill_switch_breached = True
             return
 
         # Max open positions check

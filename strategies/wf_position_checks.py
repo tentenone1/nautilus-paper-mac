@@ -478,8 +478,8 @@ def trigger_kill_switch(
     Returns:
         True if kill switch was triggered successfully.
     """
-    # Set kill switch flag on config
-    config._kill_switch_breached = True
+    # Note: _kill_switch_breached is a strategy instance attribute (self._kill_switch_breached),
+    # not a config field. Callers must set it on the strategy instance after this returns.
     
     # Log incident
     log.error(
