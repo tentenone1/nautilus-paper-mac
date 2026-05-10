@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 
-# Named constants
-SNAPSHOTS_DIR: Path = Path("data") / "snapshots"
+# Named constants - Use project-relative paths (works on Mac and Linux)
+SNAPSHOTS_DIR: Path = Path(__file__).parent.parent.parent / "snapshots"
 DATE_FORMAT: str = "%Y-%m-%d"
 SNAPSHOT_SUFFIX: str = ".json.gz"
 
