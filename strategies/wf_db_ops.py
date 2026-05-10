@@ -11,6 +11,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 import sys
 
 # Add project root for bitable_writer import
@@ -21,6 +22,20 @@ from components.bitable_writer import write_trading_signal
 
 
 _DEFAULT_DB_PATH = Path(__file__).parent.parent / "research" / "trades.db"
+
+
+# Phase 1 validation columns to add to trades table
+_PHASE1_COLUMNS = [
+    ("detection_delay_ms", "INTEGER DEFAULT 0"),
+    ("execution_delay_ms", "INTEGER DEFAULT 0"),
+    ("fill_delay_ms", "INTEGER DEFAULT 0"),
+    ("total_latency_ms", "INTEGER DEFAULT 0"),
+    ("intended_entry_price", "REAL"),
+    ("actual_fill_price", "REAL"),
+    ("slippage_bps", "REAL DEFAULT 0"),
+    ("fill_completion_pct", "REAL DEFAULT 100"),
+    ("snapshot_id", "TEXT"),
+]
 
 
 def _ensure_db_schema(conn: sqlite3.Connection) -> None:
@@ -52,15 +67,68 @@ def _ensure_db_schema(conn: sqlite3.Connection) -> None:
             dispute_flag INTEGER DEFAULT 0,
             notes TEXT,
             instrument_id TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            detection_delay_ms INTEGER DEFAULT 0,
+            execution_delay_ms INTEGER DEFAULT 0,
+            fill_delay_ms INTEGER DEFAULT 0,
+            total_latency_ms INTEGER DEFAULT 0,
+            intended_entry_price REAL,
+            actual_fill_price REAL,
+            slippage_bps REAL DEFAULT 0,
+            fill_completion_pct REAL DEFAULT 100,
+            snapshot_id TEXT
         )
     """)
 
 
+def migrate_trades_db(db_path: Optional[Path] = None) -> bool:
+    """Migrate trades database to add Phase 1 validation columns.
+
+    Checks if columns exist and adds missing columns with ALTER TABLE.
+    Safe to run multiple times.
+
+    Args:
+        db_path: Path to trades.db. Defaults to research/trades.db.
+
+    Returns:
+        True if migration succeeded, False on failure.
+    """
+    db = db_path if db_path else _DEFAULT_DB_PATH
+
+    if not db.exists():
+        # No database to migrate
+        return True
+
+    conn = None
+    try:
+        conn = sqlite3.connect(str(db))
+        conn.execute("PRAGMA journal_mode=WAL")
+
+        # Get existing columns
+        cursor = conn.execute("PRAGMA table_info(trades)")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+
+        # Add missing columns
+        for col_name, col_def in _PHASE1_COLUMNS:
+            if col_name not in existing_columns:
+                conn.execute(f"ALTER TABLE trades ADD COLUMN {col_name} {col_def}")
+
+        return True
+
+    except Exception:
+        return False
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
 def log_trade_to_db(
     *,
-    trade_id: str | None = None,
-    timestamp: str | None = None,
+    trade_id: Optional[str] = None,
+    timestamp: Optional[str] = None,
     whale_name: str,
     whale_address: str,
     market_title: str,
@@ -75,9 +143,18 @@ def log_trade_to_db(
     entry_reason: str = "",
     instrument_id: str = "",
     condition_id: str = "",
-    db_path: str | Path | None = None,
-    log_func=None,
-) -> str | None:
+    detection_delay_ms: int = 0,
+    execution_delay_ms: int = 0,
+    fill_delay_ms: int = 0,
+    total_latency_ms: int = 0,
+    intended_entry_price: Optional[float] = None,
+    actual_fill_price: Optional[float] = None,
+    slippage_bps: float = 0.0,
+    fill_completion_pct: float = 100.0,
+    snapshot_id: str = "",
+    db_path: Optional[str] = None,
+    log_func: Optional[Callable[[str], None]] = None,
+) -> Optional[str]:
     """Insert a new trade record into the trades database.
 
     Uses a transaction with explicit BEGIN/COMMIT and rollback on failure.
@@ -99,6 +176,15 @@ def log_trade_to_db(
         entry_reason: Reason for entering the trade.
         instrument_id: Full instrument ID string.
         condition_id: Condition ID portion of the instrument ID.
+        detection_delay_ms: Time from signal detection to order submission (ms).
+        execution_delay_ms: Time from order submission to first fill (ms).
+        fill_delay_ms: Time from first fill to complete fill (ms).
+        total_latency_ms: Total time from signal to complete fill (ms).
+        intended_entry_price: Price we intended to enter at.
+        actual_fill_price: Actual average fill price.
+        slippage_bps: Slippage in basis points.
+        fill_completion_pct: Percentage of order filled (0-100).
+        snapshot_id: ID of the validation snapshot.
         db_path: Path to trades.db. Defaults to research/trades.db.
         log_func: Optional logging callable for errors.
 
@@ -126,8 +212,11 @@ def log_trade_to_db(
                 trade_id, timestamp, whale_name, whale_address,
                 market_title, side, entry_price, position_size_usd,
                 category, signal_source, edge_score, confidence,
-                kelly_fraction, entry_reason, instrument_id, condition_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                kelly_fraction, entry_reason, instrument_id, condition_id,
+                detection_delay_ms, execution_delay_ms, fill_delay_ms,
+                total_latency_ms, intended_entry_price, actual_fill_price,
+                slippage_bps, fill_completion_pct, snapshot_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             trade_id,
             timestamp,
@@ -145,6 +234,15 @@ def log_trade_to_db(
             entry_reason,
             instrument_id,
             condition_id,
+            detection_delay_ms,
+            execution_delay_ms,
+            fill_delay_ms,
+            total_latency_ms,
+            intended_entry_price,
+            actual_fill_price,
+            slippage_bps,
+            fill_completion_pct,
+            snapshot_id,
         ))
         conn.execute("COMMIT")
 
@@ -192,10 +290,10 @@ def log_trade_to_db(
 
 
 def recover_open_positions(
-    db_path: str | Path | None = None,
-    log_func=None,
+    db_path: Optional[str] = None,
+    log_func: Optional[Callable[[str], None]] = None,
     max_recovery_age_hours: float = 4.0,
-) -> list[dict]:
+) -> List[Dict[str, Any]]:
     """Reload unfinished positions from the trades DB.
 
     Reads rows that have no exit_reason (i.e. still open) and reconstructs
@@ -244,7 +342,7 @@ def recover_open_positions(
 
         now = datetime.now(timezone.utc)
         cutoff_seconds = max_recovery_age_hours * 3600
-        recovered: list[dict] = []
+        recovered: List[Dict[str, Any]] = []
         skipped = 0
 
         for row in rows:

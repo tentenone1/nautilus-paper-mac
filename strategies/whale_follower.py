@@ -50,6 +50,25 @@ from strategies.whale_tracker_new import (
     WhaleTracker,
 )
 from strategies.whale_insider_analyzer import WhaleInsiderAnalyzer
+
+# ── Phase 1 Validation Integration ──────────────────────────────────────────────
+# Import validation modules with backward compatibility (graceful degradation)
+try:
+    from components.validation.event_logger import EventType, log_event
+    from components.validation.trade_context import TradeContext, get_trade_context
+    from components.validation.snapshot_store import freeze_snapshot
+    from components.validation.db_router import get_current_mode
+    _validation_available = True
+except ImportError as e:
+    # Validation modules not available - strategy will work without event logging
+    _validation_available = False
+    EventType = None
+    log_event = None
+    TradeContext = None
+    get_trade_context = None
+    freeze_snapshot = None
+    get_current_mode = lambda: "paper"
+
 from strategies.wf_constants import (
     TRADE_BUFFER_SIZE_THRESHOLD,
     TRADE_BUFFER_FLUSH_COUNT,
@@ -296,6 +315,20 @@ class WhaleFollower(Strategy):
         self._fade_positions: set[str] = set()  # Track active fade positions for concurrency limiting
         self._fade_max_concurrent: int = 3  # Max concurrent fade trades
         self._sybil_price_cache: dict[str, tuple[float, float]] = {}  # condition_id -> (midpoint, timestamp)
+        
+        # ── Phase 1 Validation Context ──────────────────────────────────────────────
+        # Trade correlation tracker for latency/slippage metrics
+        self._validation_context: TradeContext | None = None
+        self._validation_run_id: str = ""
+        self._signal_timestamps: dict[str, int] = {}  # signal_id -> monotonic_ns when whale detected
+        if _validation_available:
+            try:
+                self._validation_context = get_trade_context()
+                self._validation_run_id = str(uuid.uuid4())
+                self.log.info(f"Validation context initialized (run_id={self._validation_run_id[:8]}...)")
+            except Exception as e:
+                self.log.warning(f"Failed to initialize validation context: {e}")
+                self._validation_context = None
 
     def on_start(self) -> None:
         self._sports_daily_pnl: float = 0.0
@@ -707,6 +740,79 @@ class WhaleFollower(Strategy):
                 "kelly_fraction": kelly_fraction,
             }
 
+            # ── Phase 1: TRADE_FILLED event + latency/slippage metrics ──────────────────────────────
+            # Emit event after fill received, compute latency and slippage
+            filled_ts = time.monotonic_ns()
+            client_order_id = str(event.client_order_id)
+            validation_signal_id = pending.get("_validation_signal_id", "")
+            validation_snapshot_id = pending.get("_validation_snapshot_id", "")
+            
+            if _validation_available and log_event and EventType and validation_signal_id:
+                try:
+                    # Register fill in trade context
+                    if self._validation_context:
+                        try:
+                            self._validation_context.register_fill(
+                                client_order_id=client_order_id,
+                                filled_ts=filled_ts,
+                                actual_price=float(entry_price),
+                                filled_size=float(size_usd),
+                            )
+                        except Exception as ctx_err:
+                            self.log.warning(f"Trade context fill registration failed: {ctx_err}")
+                    
+                    # Compute latency metrics
+                    latencies = {"detection_delay_ms": 0, "execution_delay_ms": 0, "fill_delay_ms": 0, "total_latency_ms": 0}
+                    if self._validation_context:
+                        try:
+                            latencies = self._validation_context.compute_latencies(client_order_id)
+                        except Exception:
+                            pass  # Graceful fallback to zeros
+                    
+                    # Compute slippage metrics
+                    slippage = {"slippage_bps": 0.0, "fill_completion_pct": 100.0}
+                    if self._validation_context:
+                        try:
+                            slippage = self._validation_context.compute_slippage(client_order_id)
+                        except Exception:
+                            pass  # Graceful fallback to zeros
+                    
+                    # Emit TRADE_FILLED event
+                    log_event(
+                        event_type=EventType.TRADE_FILLED,
+                        payload={
+                            "signal_id": validation_signal_id,
+                            "snapshot_id": validation_snapshot_id,
+                            "trade_id": trade_id,
+                            "client_order_id": client_order_id,
+                            "whale_name": whale_name,
+                            "market_title": market_title[:80],
+                            "category": category,
+                            "side": event.order_side.name if hasattr(event, 'order_side') else 'BUY',
+                            "actual_fill_price": float(entry_price),
+                            "filled_size_usd": float(size_usd),
+                            "quantity": float(qty),
+                            "instrument_id": str(event.instrument_id)[:80],
+                            "detection_delay_ms": latencies["detection_delay_ms"],
+                            "execution_delay_ms": latencies["execution_delay_ms"],
+                            "fill_delay_ms": latencies["fill_delay_ms"],
+                            "total_latency_ms": latencies["total_latency_ms"],
+                            "slippage_bps": slippage["slippage_bps"],
+                            "fill_completion_pct": slippage["fill_completion_pct"],
+                            "ts_mono_ns": filled_ts,
+                        },
+                        correlation_id=validation_signal_id,
+                        mode=get_current_mode(),
+                        strategy_id="whale_follower",
+                        run_id=self._validation_run_id,
+                    )
+                    self.log.debug(
+                        f"Validation: TRADE_FILLED {trade_id[:8]}... latency={latencies['total_latency_ms']}ms "
+                        f"slippage={slippage['slippage_bps']:.1f}bps"
+                    )
+                except Exception as e:
+                    self.log.warning(f"Validation event emission failed: {e}")
+
             # Track fade positions for concurrency limiting
             if pending.get("is_fade", False):
                 inst_key = str(event.instrument_id)
@@ -834,6 +940,42 @@ class WhaleFollower(Strategy):
             signals = self._tracker.detect_large_trades(self._trade_buffer)
             self._trade_buffer.clear()
             for signal in signals:
+                # ── Phase 1: WHALE_TRADE_DETECTED event ──────────────────────────────────────
+                # Emit event when whale action is detected from trade buffer
+                signal_id = str(uuid.uuid4())
+                whale_trade_ts = time.monotonic_ns()
+                self._signal_timestamps[signal_id] = whale_trade_ts
+                
+                if _validation_available and log_event and EventType:
+                    try:
+                        log_event(
+                            event_type=EventType.WHALE_TRADE_DETECTED,
+                            payload={
+                                "signal_id": signal_id,
+                                "whale_name": signal.whale_name,
+                                "whale_address": getattr(signal, 'whale_address', ''),
+                                "market_title": getattr(signal, 'market_title', '')[:80],
+                                "market_category": getattr(signal, 'market_category', ''),
+                                "side": signal.side,
+                                "target_price": float(getattr(signal, 'target_price', 0.5)),
+                                "suggested_size_usd": float(getattr(signal, 'suggested_size_usd', 0)),
+                                "confidence": float(getattr(signal, 'confidence', 0)),
+                                "edge_score": float(getattr(signal, 'edge_score', 0)),
+                                "condition_id": signal.condition_id[:50],
+                                "signal_source": signal.source.value if hasattr(signal.source, 'value') else str(signal.source),
+                                "ts_mono_ns": whale_trade_ts,
+                            },
+                            correlation_id=signal_id,
+                            mode=get_current_mode(),
+                            strategy_id="whale_follower",
+                            run_id=self._validation_run_id,
+                        )
+                        self.log.debug(f"Validation: WHALE_TRADE_DETECTED {signal_id[:8]}... ({signal.whale_name})")
+                    except Exception as e:
+                        self.log.warning(f"Validation event emission failed: {e}")
+                
+                # Pass signal_id to _on_signal for correlation
+                signal._validation_signal_id = signal_id
                 self._on_signal(signal)
         except Exception as e:
             self.log.error(f"Trade processing error: {e}")
@@ -1078,6 +1220,95 @@ class WhaleFollower(Strategy):
             if whale_wr is None:
                 self.log.debug(f"Whale '{signal.whale_name}' not found in tracker, using default Kelly")
 
+        # ── Phase 1: SIGNAL_GENERATED event + snapshot freeze ──────────────────────────────────────
+        # Emit event and freeze decision inputs AFTER validation passes, BEFORE any future data leaks in
+        signal_generated_ts = time.monotonic_ns()
+        snapshot_id = ""
+        validation_signal_id = getattr(signal, '_validation_signal_id', str(uuid.uuid4()))
+        
+        if _validation_available and log_event and EventType:
+            try:
+                # Freeze snapshot BEFORE order submission (critical for replay validation)
+                if freeze_snapshot:
+                    try:
+                        # Gather market state from orderbook if available
+                        market_state = {
+                            "price": float(signal.target_price),
+                            "side": signal.side,
+                            "confidence": float(signal.confidence),
+                            "edge_score": float(getattr(signal, 'edge_score', 0)),
+                        }
+                        # Minimal orderbook snapshot (top level only)
+                        orderbook = {"bid": float(signal.target_price), "ask": float(signal.target_price)}
+                        whale_metrics = {
+                            "whale_name": signal.whale_name,
+                            "suggested_size_usd": float(signal.suggested_size_usd),
+                            "classification": getattr(signal, 'classification', 'unknown'),
+                        }
+                        
+                        snapshot = freeze_snapshot(
+                            signal_id=validation_signal_id,
+                            market_state=market_state,
+                            orderbook=orderbook,
+                            whale_metrics=whale_metrics,
+                            classification=getattr(signal, 'classification', 'unknown'),
+                            confidence=float(signal.confidence),
+                            market_regime="neutral",
+                            strategy_version="v1.0",
+                        )
+                        snapshot_id = snapshot.snapshot_id
+                        self.log.debug(f"Validation: Snapshot frozen {snapshot_id[:8]}...")
+                    except Exception as snap_err:
+                        self.log.warning(f"Snapshot freeze failed: {snap_err}")
+                
+                # Register signal in trade context for correlation
+                whale_trade_ts = self._signal_timestamps.get(validation_signal_id, signal_generated_ts)
+                if self._validation_context:
+                    try:
+                        self._validation_context.register_signal(
+                            signal_id=validation_signal_id,
+                            whale_trade_ts=whale_trade_ts,
+                            signal_detected_ts=signal_generated_ts,  # Use signal_generated as proxy
+                            signal_generated_ts=signal_generated_ts,
+                            snapshot_id=snapshot_id,
+                            side=signal.side.upper(),
+                        )
+                    except Exception as ctx_err:
+                        self.log.warning(f"Trade context registration failed: {ctx_err}")
+                
+                # Emit SIGNAL_GENERATED event
+                log_event(
+                    event_type=EventType.SIGNAL_GENERATED,
+                    payload={
+                        "signal_id": validation_signal_id,
+                        "snapshot_id": snapshot_id,
+                        "whale_name": signal.whale_name,
+                        "market_title": getattr(signal, 'market_title', '')[:80],
+                        "market_category": getattr(signal, 'market_category', ''),
+                        "side": signal.side,
+                        "target_price": float(signal.target_price),
+                        "suggested_size_usd": float(signal.suggested_size_usd),
+                        "confidence": float(signal.confidence),
+                        "edge_score": float(getattr(signal, 'edge_score', 0)),
+                        "llm_score": llm_score,
+                        "tier": tier,
+                        "is_fade": is_fade,
+                        "whale_win_rate": float(whale_wr or 0.55),
+                        "ts_mono_ns": signal_generated_ts,
+                    },
+                    correlation_id=validation_signal_id,
+                    mode=get_current_mode(),
+                    strategy_id="whale_follower",
+                    run_id=self._validation_run_id,
+                )
+                self.log.debug(f"Validation: SIGNAL_GENERATED {validation_signal_id[:8]}... snapshot={snapshot_id[:8] if snapshot_id else 'none'}")
+            except Exception as e:
+                self.log.warning(f"Validation event emission failed: {e}")
+        
+        # Pass signal_id and snapshot_id to enter_position for correlation
+        signal._validation_signal_id = validation_signal_id
+        signal._validation_snapshot_id = snapshot_id
+
         self.enter_position(
             side, signal.target_price, signal.suggested_size_usd,
             instrument_id=target_inst, whale_win_rate=whale_wr,
@@ -1089,6 +1320,8 @@ class WhaleFollower(Strategy):
             confidence=signal.confidence or 0.0,
             entry_reason=signal.reason or "",
             is_fade=is_fade,
+            _validation_signal_id=validation_signal_id,
+            _validation_snapshot_id=snapshot_id,
         )
 
     def _find_instrument(self, condition_id: str) -> InstrumentId | None:
@@ -1151,6 +1384,7 @@ class WhaleFollower(Strategy):
         whale_name: str = None, market_title: str = "", market_category: str = "",
         whale_address: str = "", edge_score: float = 0.0, confidence: float = 0.0,
         entry_reason: str = "", is_fade: bool = False,
+        _validation_signal_id: str = "", _validation_snapshot_id: str = "",
     ) -> None:
         """Enter Kelly-sized position."""
         inst_id = instrument_id or self.config.instrument_id
@@ -1276,6 +1510,8 @@ class WhaleFollower(Strategy):
                 "kelly_fraction": self.config.kelly_fraction,
                 "entry_price": price,
                 "is_fade": is_fade,
+                "_validation_signal_id": _validation_signal_id,
+                "_validation_snapshot_id": _validation_snapshot_id,
             }
         # Register intended price for PaperExecClient to use at fill time
         from components.paper_execution import set_fill_price
@@ -1286,6 +1522,51 @@ class WhaleFollower(Strategy):
             f"= ${size_usd:,.2f}{whale_note} | {inst_id}"
         )
         self.submit_order(order)
+        
+        # ── Phase 1: TRADE_SUBMITTED event ──────────────────────────────────────
+        # Emit event after order submission for latency tracking
+        submitted_ts = time.monotonic_ns()
+        
+        if _validation_available and log_event and EventType and _validation_signal_id:
+            try:
+                # Register submission in trade context
+                if self._validation_context:
+                    try:
+                        self._validation_context.register_submission(
+                            client_order_id=str(order.client_order_id),
+                            signal_id=_validation_signal_id,
+                            submitted_ts=submitted_ts,
+                            intended_price=float(price),
+                            intended_size=float(size_usd),
+                        )
+                    except Exception as ctx_err:
+                        self.log.warning(f"Trade context submission registration failed: {ctx_err}")
+                
+                # Emit TRADE_SUBMITTED event
+                log_event(
+                    event_type=EventType.TRADE_SUBMITTED,
+                    payload={
+                        "signal_id": _validation_signal_id,
+                        "snapshot_id": _validation_snapshot_id,
+                        "client_order_id": str(order.client_order_id),
+                        "whale_name": whale_name,
+                        "market_title": market_title[:80],
+                        "side": side.name,
+                        "intended_price": float(price),
+                        "intended_size_usd": float(size_usd),
+                        "quantity": float(qty.as_decimal()),
+                        "instrument_id": str(inst_id)[:80],
+                        "ts_mono_ns": submitted_ts,
+                    },
+                    correlation_id=_validation_signal_id,
+                    mode=get_current_mode(),
+                    strategy_id="whale_follower",
+                    run_id=self._validation_run_id,
+                )
+                self.log.debug(f"Validation: TRADE_SUBMITTED {str(order.client_order_id)[:12]}... signal={_validation_signal_id[:8]}")
+            except Exception as e:
+                self.log.warning(f"Validation event emission failed: {e}")
+        
         self._trades_this_scan += 1
 
     def _fetch_real_midpoint(self, inst_key: str) -> float | None:
@@ -1433,6 +1714,50 @@ class WhaleFollower(Strategy):
                 conn.close()
             except Exception as e:
                 self.log.error(f"[DB] Failed to update exit P&L: {e}")
+        
+        # ── Phase 1: TRADE_CLOSED event ──────────────────────────────────────
+        # Emit event after position exit for complete trade lifecycle tracking
+        closed_ts = time.monotonic_ns()
+        
+        if _validation_available and log_event and EventType and trade_id:
+            try:
+                # Emit TRADE_CLOSED event
+                log_event(
+                    event_type=EventType.TRADE_CLOSED,
+                    payload={
+                        "trade_id": trade_id,
+                        "whale_name": pos_info.get("whale_name", ""),
+                        "market_title": (pos_info.get("market_title", "") or "")[:80],
+                        "category": category,
+                        "side": side,
+                        "entry_price": float(entry_price),
+                        "exit_price": float(exit_price),
+                        "quantity": float(qty),
+                        "realized_pnl": float(realized_pnl),
+                        "realized_return": float(realized_return),
+                        "duration_seconds": float(duration),
+                        "exit_reason": exit_reason,
+                        "instrument_id": inst_key[:80],
+                        "ts_mono_ns": closed_ts,
+                    },
+                    correlation_id=trade_id,
+                    mode=get_current_mode(),
+                    strategy_id="whale_follower",
+                    run_id=self._validation_run_id,
+                )
+                self.log.debug(f"Validation: TRADE_CLOSED {trade_id[:8]}... PnL=${realized_pnl:+.2f}")
+                
+                # Clear trade context for this position
+                if self._validation_context:
+                    try:
+                        # Find client_order_id from signal_id (reverse lookup)
+                        # We don't have direct mapping, so we skip context clearing
+                        # Context will be cleared on next signal or remain for analysis
+                        pass
+                    except Exception:
+                        pass
+            except Exception as e:
+                self.log.warning(f"Validation event emission failed: {e}")
         
         # Nautilus close
         self.close_position(pos)
