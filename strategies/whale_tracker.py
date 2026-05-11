@@ -22,6 +22,7 @@ import requests
 
 class SignalSource(Enum):
     """Where the signal came from."""
+
     KNOWN_WHALE = "known_whale"  # Tracked wallet position
     LARGE_TRADE = "large_trade"  # Unknown wallet, large trade
     MODEL_INSIDER = "model_insider"  # Detected by uncensored model
@@ -30,6 +31,7 @@ class SignalSource(Enum):
 @dataclass
 class WhaleIdentity:
     """Known whale wallet with performance metrics."""
+
     name: str
     proxy_wallet: str
     win_rate: float
@@ -74,6 +76,7 @@ KNOWN_WHALES = [
 @dataclass
 class WhaleSignal:
     """Trading signal from whale activity."""
+
     source: SignalSource
     condition_id: str
     outcome: str
@@ -98,9 +101,12 @@ class WhaleTracker:
 
     def __init__(self):
         self.whales = {w.proxy_wallet: w for w in KNOWN_WHALES}
-        self.seen_positions: dict[str, float] = {}  # "wallet:conditionId:outcome" -> timestamp
+        self.seen_positions: dict[
+            str, float
+        ] = {}  # "wallet:conditionId:outcome" -> timestamp
         self.signal_history: list[WhaleSignal] = []
         self.last_scan_time: float = 0
+        self._last_sizes: dict = {}
         self._load_state()
 
     def _log(self, msg: str) -> None:
@@ -109,7 +115,7 @@ class WhaleTracker:
     def _load_state(self) -> None:
         try:
             if os.path.exists(self.STATE_FILE):
-                with open(self.STATE_FILE, 'r') as f:
+                with open(self.STATE_FILE, "r") as f:
                     data = json.load(f)
                 self.seen_positions = data.get("seen_positions", {})
                 self.last_scan_time = data.get("last_scan_time", 0)
@@ -124,7 +130,7 @@ class WhaleTracker:
                 "last_scan_time": self.last_scan_time,
             }
             os.makedirs(os.path.dirname(self.STATE_FILE), exist_ok=True)
-            with open(self.STATE_FILE, 'w') as f:
+            with open(self.STATE_FILE, "w") as f:
                 json.dump(state, f, indent=2, default=str)
         except Exception as e:
             self._log(f"Failed to save state: {e}")
@@ -163,7 +169,9 @@ class WhaleTracker:
             self._log(f"API error for {address}: {e}")
             return []
 
-    def _process_position(self, pos: dict, whale: WhaleIdentity, now: float) -> Optional[WhaleSignal]:
+    def _process_position(
+        self, pos: dict, whale: WhaleIdentity, now: float
+    ) -> Optional[WhaleSignal]:
         """Process a single position, return signal if new."""
         condition_id = pos.get("conditionId", "")
         outcome = pos.get("outcome", "")
@@ -174,10 +182,13 @@ class WhaleTracker:
         if size < self.MIN_POSITION_SIZE or price <= 0.001:
             return None  # Skip tiny/expired
 
-        # Deduplicate
         pos_key = f"{whale.proxy_wallet}:{condition_id}:{outcome}"
-        if pos_key in self.seen_positions:
+        last_size = self._last_sizes.get(pos_key, 0)
+
+        if last_size > 0 and size <= last_size * 1.10:
             return None
+
+        self._last_sizes[pos_key] = size
         self.seen_positions[pos_key] = now
 
         # Signal generation
@@ -229,19 +240,21 @@ class WhaleTracker:
             # Confidence based on trade size
             confidence = min(0.50 + (usd / 100000) * 0.2, 0.70)
 
-            signals.append(WhaleSignal(
-                source=SignalSource.LARGE_TRADE,
-                condition_id=condition_id,
-                outcome=outcome,
-                side=side,
-                confidence=confidence,
-                target_price=price,
-                suggested_size_usd=usd * 0.25,
-                whale_name="Unknown Whale",
-                timestamp=now,
-                reason=f"Large trade {side} {outcome} ${usd:,.0f} @ {price:.3f}",
-                market_title=title,
-            ))
+            signals.append(
+                WhaleSignal(
+                    source=SignalSource.LARGE_TRADE,
+                    condition_id=condition_id,
+                    outcome=outcome,
+                    side=side,
+                    confidence=confidence,
+                    target_price=price,
+                    suggested_size_usd=usd * 0.25,
+                    whale_name="Unknown Whale",
+                    timestamp=now,
+                    reason=f"Large trade {side} {outcome} ${usd:,.0f} @ {price:.3f}",
+                    market_title=title,
+                )
+            )
 
         return signals
 

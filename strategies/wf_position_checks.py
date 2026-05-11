@@ -28,6 +28,7 @@ from strategies.wf_constants import (
 # Import validation modules with backward compatibility (graceful degradation)
 try:
     from components.validation.event_logger import EventType, log_event
+
     _validation_available = True
 except ImportError:
     _validation_available = False
@@ -96,7 +97,19 @@ def check_all_positions(
         except Exception as e:
             log.error(f"Error exiting expired position {inst_key[:50]}...: {e}")
             if inst_key in open_positions:
-                del open_positions[inst_key]
+                exit_position(
+                    config=config,
+                    cache=cache,
+                    log=log,
+                    open_positions=open_positions,
+                    exited_positions=exited_positions,
+                    last_exit_time=last_exit_time,
+                    resolution_poller=resolution_poller,
+                    clob_client=clob_client,
+                    instrument_id=inst_id,
+                    exit_reason="error_cleanup",
+                    market_category=pos_info.get("market_category", "Unknown"),
+                )
 
     # Phase 2: Check ALL open positions for certainty exits
     for inst_key in list(open_positions.keys()):
@@ -104,7 +117,9 @@ def check_all_positions(
             try:
                 inst_id = InstrumentId.from_str(inst_key)
             except Exception as parse_err:
-                log.error(f"Failed to parse instrument ID '{inst_key[:50]}...': {parse_err}")
+                log.error(
+                    f"Failed to parse instrument ID '{inst_key[:50]}...': {parse_err}"
+                )
                 continue
 
             open_pos_list = cache.positions_open(instrument_id=inst_id)
@@ -119,10 +134,22 @@ def check_all_positions(
                 if stale_age > max_hold * 3600:
                     log.info(
                         f"CLEANUP stale orphan {inst_key[:50]}...: "
-                        f"age={stale_age/3600:.1f}h > max_hold={max_hold}h, "
+                        f"age={stale_age / 3600:.1f}h > max_hold={max_hold}h, "
                         f"not in Nautilus cache"
                     )
-                    del open_positions[inst_key]
+                    exit_position(
+                        config=config,
+                        cache=cache,
+                        log=log,
+                        open_positions=open_positions,
+                        exited_positions=exited_positions,
+                        last_exit_time=last_exit_time,
+                        resolution_poller=resolution_poller,
+                        clob_client=clob_client,
+                        instrument_id=inst_id,
+                        exit_reason="stale_orphan_cleanup",
+                        market_category=pos_info.get("market_category", "Unknown"),
+                    )
                 continue
 
             pos = open_pos_list[0]
@@ -146,13 +173,13 @@ def check_all_positions(
                         clob_client=clob_client,
                         log=log,
                     )
-                    log.info(f"SIMULATED PRICE for {inst_id}: {mid:.4f} (no quote ticks)")
+                    log.info(
+                        f"SIMULATED PRICE for {inst_id}: {mid:.4f} (no quote ticks)"
+                    )
                 else:
                     continue
             else:
-                mid = (
-                    quote.bid_price.as_double() + quote.ask_price.as_double()
-                ) / 2
+                mid = (quote.bid_price.as_double() + quote.ask_price.as_double()) / 2
 
             position_edge = pos_info.get("edge_score", 0.0) or 0.0
             side = pos_info.get("side", "BUY")
@@ -301,17 +328,18 @@ def check_daily_loss_limit(
 
 # ── Phase 1 Risk Control: Position/Exposure Limits ──────────────────────────────────
 
+
 def get_current_total_exposure(
     *,
     cache,
     open_positions: dict,
 ) -> float:
     """Calculate total notional exposure of all open positions.
-    
+
     Args:
         cache: Nautilus Cache.
         open_positions: dict of inst_key -> position info.
-        
+
     Returns:
         Total exposure in USD (sum of all position notional values).
     """
@@ -348,18 +376,18 @@ def get_market_exposure(
     open_positions: dict,
 ) -> float:
     """Calculate exposure for a specific market/instrument.
-    
+
     Args:
         cache: Nautilus Cache.
         instrument_id: InstrumentId to check.
         open_positions: dict of inst_key -> position info.
-        
+
     Returns:
         Exposure in USD for this specific instrument.
     """
     inst_key = str(instrument_id)
     exposure = 0.0
-    
+
     # Check Nautilus cache
     positions = cache.positions_open(instrument_id=instrument_id)
     if positions:
@@ -375,14 +403,14 @@ def get_market_exposure(
                 else 0.0
             )
             exposure += qty * avg_open
-    
+
     # Check internal registry
     if inst_key in open_positions:
         pos_info = open_positions[inst_key]
         size = pos_info.get("size", 0.0)
         entry_price = pos_info.get("entry_price", 0.0)
         exposure = max(exposure, size * entry_price)
-    
+
     return exposure
 
 
@@ -398,7 +426,7 @@ def check_position_limits(
     mode: str = "paper",
 ) -> tuple[bool, str]:
     """Check all Phase 1 position/exposure limits before entering.
-    
+
     Args:
         config: WhaleFollowerConfig.
         cache: Nautilus Cache.
@@ -408,14 +436,18 @@ def check_position_limits(
         log: Logger.
         run_id: Validation run ID for event logging.
         mode: Execution mode (paper/live).
-        
+
     Returns:
         Tuple of (allowed: bool, reason: str).
         If not allowed, reason describes which limit was breached.
     """
     # Determine capital base (use validation capital or config bankroll)
-    capital = config.validation_capital_base if config.validation_capital_base > 0 else config.bankroll
-    
+    capital = (
+        config.validation_capital_base
+        if config.validation_capital_base > 0
+        else config.bankroll
+    )
+
     # 1. Check MAX_SINGLE_POSITION (2% of capital)
     max_single = capital * config.max_single_position_pct
     if proposed_size_usd > max_single:
@@ -425,9 +457,11 @@ def check_position_limits(
         )
         log.warning(reason)
         return False, reason
-    
+
     # 2. Check MAX_TOTAL_EXPOSURE (20% of capital)
-    current_total = get_current_total_exposure(cache=cache, open_positions=open_positions)
+    current_total = get_current_total_exposure(
+        cache=cache, open_positions=open_positions
+    )
     max_total = capital * config.max_total_exposure_pct
     if current_total + proposed_size_usd > max_total:
         reason = (
@@ -436,9 +470,11 @@ def check_position_limits(
         )
         log.warning(reason)
         return False, reason
-    
+
     # 3. Check MAX_MARKET_EXPOSURE (5% of capital per market)
-    current_market = get_market_exposure(cache=cache, instrument_id=instrument_id, open_positions=open_positions)
+    current_market = get_market_exposure(
+        cache=cache, instrument_id=instrument_id, open_positions=open_positions
+    )
     max_market = capital * config.max_market_exposure_pct
     if current_market + proposed_size_usd > max_market:
         reason = (
@@ -447,7 +483,7 @@ def check_position_limits(
         )
         log.warning(reason)
         return False, reason
-    
+
     # All checks passed
     return True, ""
 
@@ -464,7 +500,7 @@ def trigger_kill_switch(
     cancel_orders_func=None,
 ) -> bool:
     """Trigger kill switch: stop trading, cancel orders, emit event.
-    
+
     Args:
         config: WhaleFollowerConfig (will set _kill_switch_breached=True).
         cache: Nautilus Cache.
@@ -474,19 +510,19 @@ def trigger_kill_switch(
         mode: Execution mode (paper/live).
         strategy_id: Strategy identifier.
         cancel_orders_func: Optional callable to cancel open orders.
-        
+
     Returns:
         True if kill switch was triggered successfully.
     """
     # Note: _kill_switch_breached is a strategy instance attribute (self._kill_switch_breached),
     # not a config field. Callers must set it on the strategy instance after this returns.
-    
+
     # Log incident
     log.error(
         f"KILL_SWITCH_TRIGGERED: {reason}. "
         f"Stopping all trading and canceling open orders."
     )
-    
+
     # Cancel all open orders if function provided
     if cancel_orders_func:
         try:
@@ -494,7 +530,7 @@ def trigger_kill_switch(
             log.info("All open orders canceled due to kill switch")
         except Exception as e:
             log.error(f"Failed to cancel orders: {e}")
-    
+
     # Emit KILL_SWITCH_TRIGGERED event (graceful degradation)
     if _validation_available and log_event and EventType:
         try:
@@ -511,5 +547,5 @@ def trigger_kill_switch(
             log.info("KILL_SWITCH_TRIGGERED event logged")
         except Exception as e:
             log.warning(f"Failed to emit KILL_SWITCH_TRIGGERED event: {e}")
-    
+
     return True
