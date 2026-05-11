@@ -238,7 +238,7 @@ sandbox_config = SandboxExecutionClientConfig(
     venue=str(SANDBOX_VENUE),
     account_type="CASH",
     oms_type="NETTING",
-    starting_balances=["10_000 USDC.e"],
+    starting_balances=["100 USDC.e"],
     default_leverage=Decimal(1),
 )
 
@@ -268,7 +268,7 @@ config_node = TradingNodeConfig(
 # ── Strategy ───────────────────────────────────────────────────────────
 config_strategy = WhaleFollowerConfig(
     instrument_ids=instrument_ids,
-    bankroll=float(os.getenv("BANKROLL", "10000")),
+    bankroll=float(os.getenv("BANKROLL", "100")),
     kelly_fraction=float(os.getenv("KELLY_FRACTION", "0.25")),
     stop_loss_pct=float(os.getenv("STOP_LOSS_PCT", "0.15")),
     take_profit_pct=float(os.getenv("TAKE_PROFIT_PCT", "0.30")),
