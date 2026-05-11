@@ -880,7 +880,7 @@ class WhaleFollower(Strategy):
             except Exception as _pt_err:
                 self.log.warning("Price tracker hook failed: %s", _pt_err)
         except Exception as e:
-            self.log.error("[DB] Failed to log trade", extra={"error": str(e)})
+            self.log.error(f"[DB] Failed to log trade error={e}")
         finally:
             if conn:
                 try:

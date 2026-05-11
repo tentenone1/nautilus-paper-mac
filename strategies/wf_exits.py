@@ -71,11 +71,7 @@ def exit_position(
 
     # Skip if already exited this position
     if inst_key in exited_positions:
-        log.debug("position_already_exited", extra={
-            "component": "wf_exits",
-            "event": "position_already_exited",
-            "instrument_id": str(inst_key),
-        })
+        log.debug(f"position_already_exited component=wf_exits event=position_already_exited instrument_id={inst_key}")
         return
 
     # Look up position info from our registry FIRST (before cache check)
@@ -94,12 +90,7 @@ def exit_position(
         if is_resolved or is_resolved_exit:
             # Market is resolved but Nautilus already cleared the position
             # Record the exit using pos_info data
-            log.info("position_not_in_cache_resolved", extra={
-                "component": "wf_exits",
-                "event": "position_not_in_cache_resolved",
-                "instrument_id": str(inst_key),
-                "condition_id": condition_id,
-            })
+            log.info(f"position_not_in_cache_resolved component=wf_exits event=position_not_in_cache_resolved instrument_id={inst_key} condition_id={condition_id}")
         else:
             # Not resolved and not in cache - nothing to do
             return
@@ -158,12 +149,7 @@ def exit_position(
         sports_limit = getattr(config, "sports_daily_loss_limit", 2000.0)
         if sports_pnl <= -sports_limit:
             setattr(log, "_sports_daily_loss_breached", True)
-            log.error("sports_daily_loss_breached", extra={
-                "component": "wf_exits",
-                "event": "sports_daily_loss_breached",
-                "sports_pnl": round(sports_pnl, 2),
-                "sports_limit": sports_limit,
-            })
+            log.error(f"sports_daily_loss_breached component=wf_exits event=sports_daily_loss_breached sports_pnl={round(sports_pnl, 2)} sports_limit={sports_limit}")
 
     realized_return = (
         (exit_price - entry_price) / entry_price
@@ -174,28 +160,12 @@ def exit_position(
     # Sanity cap: P&L return exceeding +/-200% is almost certainly a
     # sandbox pricing artifact
     if abs(realized_return) > MAX_SANE_RETURN:
-        log.warning("pnl_sanity_capped", extra={
-            "component": "wf_exits",
-            "event": "pnl_sanity_capped",
-            "instrument_id": str(inst_key),
-            "uncapped_return": round(realized_return, 4),
-            "uncapped_pnl": round(realized_pnl, 4),
-            "entry_price": entry_price,
-            "exit_price": exit_price,
-            "quantity": qty,
-            "side": side,
-            "max_sane_return": MAX_SANE_RETURN,
-        })
+        log.warning(f"pnl_sanity_capped component=wf_exits event=pnl_sanity_capped instrument_id={inst_key} uncapped_return={round(realized_return, 4)} uncapped_pnl={round(realized_pnl, 4)} entry_price={entry_price} exit_price={exit_price} quantity={qty} side={side} max_sane_return={MAX_SANE_RETURN}")
         realized_pnl = (
             qty * entry_price * MAX_SANE_RETURN * (1 if realized_pnl >= 0 else -1)
         )
         realized_return = MAX_SANE_RETURN if realized_pnl >= 0 else -MAX_SANE_RETURN
-        log.info("pnl_capped", extra={
-            "component": "wf_exits",
-            "event": "pnl_capped",
-            "capped_pnl": round(realized_pnl, 4),
-            "capped_return": realized_return,
-        })
+        log.info(f"pnl_capped component=wf_exits event=pnl_capped capped_pnl={round(realized_pnl, 4)} capped_return={realized_return}")
 
     # Update DB row with exit details
     trade_id = pos_info.get("trade_id", "")
@@ -220,19 +190,7 @@ def exit_position(
     exited_positions.add(inst_key)
 
     pnl_sign = "+" if realized_pnl >= 0 else ""
-    log.info("trade_exited", extra={
-        "component": "wf_exits",
-        "event": "trade_exited",
-        "exit_reason": exit_reason,
-        "instrument_id": str(inst_key),
-        "quantity": qty,
-        "exit_price": round(exit_price, 4),
-        "entry_price": round(entry_price, 4),
-        "realized_pnl": round(realized_pnl, 4),
-        "realized_return": round(realized_return, 4),
-        "duration_secs": round(duration, 1),
-        "market_category": market_cat,
-    })
+    log.info(f"trade_exited component=wf_exits event=trade_exited exit_reason={exit_reason} instrument_id={inst_key} quantity={qty} exit_price={round(exit_price, 4)} entry_price={round(entry_price, 4)} realized_pnl={round(realized_pnl, 4)} realized_return={round(realized_return, 4)} duration_secs={round(duration, 1)} market_category={market_cat}")
     try:
         from components.metrics import get_metrics
         metrics = get_metrics()
@@ -343,11 +301,7 @@ def _update_trade_exit(
         conn.commit()
         conn.close()
     except Exception as e:
-        log.error("db_exit_update_failed", extra={
-            "component": "wf_exits",
-            "event": "db_exit_update_failed",
-            "error": str(e),
-        })
+        log.error(f"db_exit_update_failed component=wf_exits event=db_exit_update_failed error={e}")
 
 
 def _close_position_nautilus(cache, position, log, inst_id) -> None:
