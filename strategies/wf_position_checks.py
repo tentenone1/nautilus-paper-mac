@@ -22,7 +22,9 @@ from strategies.wf_constants import (
     MAX_TOTAL_EXPOSURE_PCT,
     MAX_MARKET_EXPOSURE_PCT,
     VALIDATION_CAPITAL_BASE,
+    RESOLUTION_EXIT_HOURS,
 )
+from strategies.wf_market_data import should_exit_for_resolution
 
 # ── Phase 1 Validation Integration ──────────────────────────────────────────────
 # Import validation modules with backward compatibility (graceful degradation)
@@ -55,8 +57,12 @@ def check_all_positions(
 ) -> None:
     """Check exit conditions for ALL open positions.
 
+    Phase 0: Stale position resolution check — if a position is held > max_hold/2
+        AND the market is already resolved, exit immediately.
     Phase 1: Duration-based exit — close positions held past max_hold_hours.
     Phase 2: Certainty exits — exit when price > 0.95 or < 0.05.
+    Phase 3: Sports stop-loss.
+    Phase 4: Resolution exit — exit if market already resolved or resolving soon.
 
     Args:
         config: WhaleFollowerConfig.
@@ -69,6 +75,41 @@ def check_all_positions(
         clob_client: Optional ClobClient.
     """
     now = time.time()
+
+    # Phase 0: Stale position resolution check — check markets that might already be resolved
+    # Even if position is young, if the market already ended, we should exit
+    stale_threshold = config.max_hold_hours * 3600 // 2  # half of max_hold
+    stale_candidates = [
+        k for k, v in open_positions.items()
+        if now - v.get("entry_time", 0) > stale_threshold
+    ]
+    for inst_key in stale_candidates:
+        if inst_key in exited_positions:
+            continue
+        try:
+            # Check if market is already resolved — exit immediately
+            if should_exit_for_resolution(inst_key, log_func=log.warning):
+                inst_id = InstrumentId.from_str(inst_key)
+                pos_info = open_positions.get(inst_key, {})
+                log.info(
+                    f"STALE RESOLUTION EXIT {inst_key[:50]}...: "
+                    f"market already ended, exiting without waiting for max_hold"
+                )
+                exit_position(
+                    config=config,
+                    cache=cache,
+                    log=log,
+                    open_positions=open_positions,
+                    exited_positions=exited_positions,
+                    last_exit_time=last_exit_time,
+                    resolution_poller=resolution_poller,
+                    clob_client=clob_client,
+                    instrument_id=inst_id,
+                    exit_reason="stale_resolution",
+                    market_category=pos_info.get("market_category", "Unknown"),
+                )
+        except Exception as e:
+            log.debug(f"Phase-0 resolution check error for {inst_key[:50]}...: {e}")
 
     # Phase 1: Duration-based exit
     max_hold = config.max_hold_hours
@@ -250,6 +291,32 @@ def check_all_positions(
                         market_category=market_category,
                     )
                     continue
+
+            # Phase 4: Resolution exit — exit if market already resolved or resolving soon
+            # This is critical: sports markets stop getting quote ticks after the event ends.
+            # Without this, the quote-tick-based resolution check never fires for dormant markets.
+            try:
+                if should_exit_for_resolution(inst_key, log_func=log.warning):
+                    log.info(
+                        f"RESOLUTION EXIT {inst_id}: market resolved or resolving within "
+                        f"{RESOLUTION_EXIT_HOURS}h — exiting now"
+                    )
+                    exit_position(
+                        config=config,
+                        cache=cache,
+                        log=log,
+                        open_positions=open_positions,
+                        exited_positions=exited_positions,
+                        last_exit_time=last_exit_time,
+                        resolution_poller=resolution_poller,
+                        clob_client=clob_client,
+                        instrument_id=inst_id,
+                        exit_reason="resolution_exit",
+                        market_category=market_category,
+                    )
+                    continue
+            except Exception as res_err:
+                log.debug(f"Resolution check error for {inst_key[:50]}...: {res_err}")
 
             log.info(
                 f"HOLDING {inst_id}: entry={entry:.4f}, mid={mid:.4f}, "
