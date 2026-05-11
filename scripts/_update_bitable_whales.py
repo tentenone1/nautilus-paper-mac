@@ -3,7 +3,7 @@
 import json, os, urllib.request, sys, shutil
 from datetime import datetime
 
-BASE_DIR = "/home/elon-1/workspace/nautilus-trading"
+BASE_DIR = "/Users/tentenone/workspace/nautilus-trading"
 PARSED_PATH = os.path.join(BASE_DIR, "research", "jailbreak_deep_parsed.json")
 PREVIOUS_PATH = os.path.join(BASE_DIR, "research", "jailbreak_deep_parsed.json.prev")
 

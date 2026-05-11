@@ -3,7 +3,7 @@
 import json
 import re
 
-with open("/home/elon-1/workspace/nautilus-trading/research/manipulation_playbook.json") as f:
+with open("/Users/tentenone/workspace/nautilus-trading/research/manipulation_playbook.json") as f:
     d = json.load(f)
 
 txt = d["llm_raw"]
@@ -67,7 +67,7 @@ output = {
     "full_content": content,
 }
 
-with open("/home/elon-1/workspace/nautilus-trading/research/manipulation_playbook.json", "w") as f:
+with open("/Users/tentenone/workspace/nautilus-trading/research/manipulation_playbook.json", "w") as f:
     json.dump(output, f, indent=2)
 
 print(f"Extracted {len(tactics)} tactics")

@@ -21,8 +21,23 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 NAUTILUS_ROOT = os.path.dirname(SCRIPT_DIR)  # goes up from scripts/ to nautilus-trading/
 DB_PATH = os.path.join(NAUTILUS_ROOT, "research", "trades.db")
 OUTPUT_PATH = os.path.join(NAUTILUS_ROOT, "research", "whale_profiles.json")
-LLM_URL = "http://127.0.0.1:8080/v1/chat/completions"
-LLM_MODEL = "qwen3.6-35b-a3b-uncensored-hauhaucs-aggressive"
+LLM_URL = "https://api.minimaxi.com/v1/chat/completions"
+LLM_MODEL = "MiniMax-M2.7-highspeed"
+
+def _get_api_key() -> str:
+    """Load MiniMax API key from config."""
+    try:
+        with open(os.path.expanduser("~/.claw.json")) as f:
+            return json.load(f).get("api_key", "")
+    except Exception:
+        return os.getenv("MINIMAX_API_KEY", "")
+
+def _build_headers() -> dict:
+    headers = {"Content-Type": "application/json"}
+    api_key = _get_api_key()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
 
 # Load ALL whales with wallet addresses from backup DB
 def load_all_whales(db) -> list[str]:
@@ -50,7 +65,7 @@ def query_llm(prompt: str) -> str:
         "temperature": 0.15,
     }).encode()
     try:
-        req = urllib.request.Request(LLM_URL, data=payload, headers={"Content-Type": "application/json"})
+        req = urllib.request.Request(LLM_URL, data=payload, headers=_build_headers())
         with urllib.request.urlopen(req, timeout=180) as resp:
             data = json.loads(resp.read())
         msg = data["choices"][0]["message"]

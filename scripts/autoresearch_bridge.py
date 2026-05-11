@@ -45,7 +45,7 @@ DETECTIONS_FILE: Path = PROJECT_ROOT / "research" / "signal_detections.json"
 OUTPUT_FILE: Path = PROJECT_ROOT / "research" / "trade_recommendations.json"
 WHALE_DB_PATH: Path = PROJECT_ROOT / "pipeline" / "data" / "whale_discovery.db"
 
-LLM_URL: str = "http://192.168.50.148:1234/v1/chat/completions"
+LLM_URL: str = "http://127.0.0.1:8080/v1/chat/completions"
 LLM_MODEL: str = "qwen3.6-35b-a3b-uncensored-hauhaucs-aggressive"
 CLOB_MIDPOINT_URL: str = "https://clob.polymarket.com/midpoint?token_id={}"
 MARKETS_API: str = "https://data-api.polymarket.com/markets?conditionId={}&limit=1"

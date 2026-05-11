@@ -6,7 +6,7 @@ APP_ID = os.environ.get("FEISHU_APP_ID", "cli_a94416fa03389cbd")
 APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "")
 BASE_ID = "Jwr7b4Rf2a1EsfsqvwZcFJoXnVf"
 TABLE_ID = "tblSM2BBBGJbZGO3"
-PARSED_PATH = "/home/elon-1/workspace/nautilus-trading/research/jailbreak_deep_parsed.json"
+PARSED_PATH = "/Users/tentenone/workspace/nautilus-trading/research/jailbreak_deep_parsed.json"
 
 def get_tenant_token():
     url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"

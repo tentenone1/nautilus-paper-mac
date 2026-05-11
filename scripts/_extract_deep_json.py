@@ -2,7 +2,7 @@
 """Extract JSON from jailbreak_deep_analysis.json LLM response."""
 import json, re, sys
 
-with open('/home/elon-1/workspace/nautilus-trading/research/jailbreak_deep_analysis.json') as f:
+with open('/Users/tentenone/workspace/nautilus-trading/research/jailbreak_deep_analysis.json') as f:
     data = json.load(f)
 
 response = data['llm_response']
@@ -32,14 +32,14 @@ else:
 
 try:
     parsed = json.loads(json_str)
-    with open('/home/elon-1/workspace/nautilus-trading/research/jailbreak_deep_parsed.json', 'w') as f:
+    with open('/Users/tentenone/workspace/nautilus-trading/research/jailbreak_deep_parsed.json', 'w') as f:
         json.dump(parsed, f, indent=2)
     print("PARSED SUCCESSFULLY")
     print(json.dumps(parsed, indent=2))
 except Exception as e:
     print(f"PARSE ERROR: {e}")
     # Save raw for inspection
-    with open('/home/elon-1/workspace/nautilus-trading/research/jailbreak_raw_extracted.txt', 'w') as f:
+    with open('/Users/tentenone/workspace/nautilus-trading/research/jailbreak_raw_extracted.txt', 'w') as f:
         f.write(json_str)
     print(f"Saved raw extracted text ({len(json_str)} chars)")
     # Try to find any JSON in the response

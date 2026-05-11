@@ -875,7 +875,7 @@ class WhaleFollower(Strategy):
         if self._tracker.seen_positions:
             expired = [
                 k for k, v in self._tracker.seen_positions.items()
-                if now - v > ttl
+                if now - (v if isinstance(v, float) else v.get("timestamp", now)) > ttl
             ]
             if expired:
                 for k in expired:

@@ -28,29 +28,31 @@ LOG_LINES = 80
 
 def get_process_info():
     try:
+        # Use ps aux for cross-platform compatibility (pgrep -fa output varies: Linux shows "pid cmd", macOS shows bare PIDs)
         result = subprocess.run(
-            ["pgrep", "-fa", NAUTILUS_PROC],
+            ["ps", "aux"],
             capture_output=True, text=True, timeout=5
         )
-        if result.returncode != 0:
-            return {"running": False, "pids": [], "main_pid": "", "uptime_output": ""}
-        lines = result.stdout.strip().split("\n")
         pids = []
-        for line in lines:
-            if "venv" in line or "python" in line:
+        for line in result.stdout.strip().split("\n"):
+            if NAUTILUS_PROC in line and "grep" not in line:
                 parts = line.split()
-                pids.append(parts[0])
-        if pids:
-            uptime_result = subprocess.run(
-                ["ps", "-p", pids[0], "-o", "pid,etime,rss,vsz"],
-                capture_output=True, text=True, timeout=5
-            )
-            return {
-                "running": True,
-                "pids": pids,
-                "main_pid": pids[0],
-                "uptime_output": uptime_result.stdout.strip(),
-            }
+                if parts:
+                    pids.append(parts[1])  # ps aux format: USER PID ...
+        if not pids:
+            return {"running": False, "pids": [], "main_pid": "", "uptime_output": ""}
+        # Sort numerically to get the oldest (likely parent) process first
+        pids.sort(key=int)
+        uptime_result = subprocess.run(
+            ["ps", "-p", pids[0], "-o", "pid,etime,rss,vsz"],
+            capture_output=True, text=True, timeout=5
+        )
+        return {
+            "running": True,
+            "pids": pids,
+            "main_pid": pids[0],
+            "uptime_output": uptime_result.stdout.strip(),
+        }
     except Exception:
         pass
     return {"running": False, "pids": [], "main_pid": "", "uptime_output": ""}

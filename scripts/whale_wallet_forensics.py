@@ -150,7 +150,7 @@ def main():
             results[name]["type"] = "unknown"
     
     # Save
-    output_path = "/home/elon-1/workspace/nautilus-trading/research/wallet_forensics.json"
+    output_path = "/Users/tentenone/workspace/nautilus-trading/research/wallet_forensics.json"
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\n[wallet_forensics] Saved to {output_path}", flush=True)
