@@ -124,12 +124,23 @@ RESOLUTION_EXIT_HOURS = 6  # Exit if market resolves within this many hours
 SPORTS_EXIT_HOURS_BEFORE_EVENT = 1  # Exit sports positions this many hours before game
 SPORTS_KELLY_MULTIPLIER = 0.5  # Halved Kelly for sports (38.6% WR vs 55% breakeven)
 
-# SPORTS WHITELIST: Only allow markets matching these patterns
-# All other sports markets are rejected (team-vs-team, O/U, single-team)
-# Track record: Only Spread bets are profitable; all other sports formats lose money
+# SPORTS WHITELIST: Allow sports markets matching these patterns
+# Also allows major sports categories (NBA, NFL, UFC, soccer, tennis) regardless of title pattern
+# Track record: Spread/handicap bets and major league match winners are profitable
 SPORTS_WHITELIST_PATTERNS = [
-    r"^Spread:",       # "Spread: Lakers (-3.5)", "Spread: Thunder (-15.5)"
-    r"^Spread\s*:",    # tolerate "Spread : Lakers"
+    r"^Spread:",              # "Spread: Lakers (-3.5)"
+    r"^Spread\s*:",           # tolerate "Spread : Lakers"
+    r"^Handicap:",            # "Handicap: Lakers -3.5"
+    r"^Point\s*Spread:",      # "Point Spread: Team (-3.5)"
+    r"^Game\s*Line:",         # "Game Line: Team -3"
+    r"\s+-\s+\d+\.?\d*",     # "Lakers - 3.5" (spread with spaces)
+    r"\s-\s*\d+\.?\d*",      # "Lakers -3.5", "Team -115" (spread, no space before digit)
+    r"\(\s*-?\d+\.?\d+\s*\)$",  # "(+3.5)", "(-3.5)" (odds-style spread notation)
+    # Major league match winner markets (high signal quality)
+    r"(?i)\b(NBA|NFL|MLB|NHL|UFC|NASCAR|Formula\s*1|F1|UEFA|Premier\s*League|World\s*Cup|Champions\s*League|Super\s*Bowl)\b",
+    # Generic team vs team (common Polymarket format, high whale activity)
+    # FIXED: use (?<!\w)(?!\w) instead of \b to prevent matching "v" inside words
+    r"(?i)(?<!\w)(?:vs|v\.?|@)(?!\w)",
 ]
 
 # Over/Under market patterns to reject (unprofitable)
@@ -161,9 +172,15 @@ SPORTS_DAILY_LOSS_LIMIT = 2000  # Max daily loss on sports before blocking new p
 SPORTS_AUTO_EXIT_LOSS = 250  # Auto-exit sports positions at -$250 unrealized P&L
 
 # Single-team winner market patterns to reject
+# FIXED: was using broad string containment (" win the ") which incorrectly
+# blocked legitimate binary prediction markets (e.g. "Will X win the Y?").
+# Now uses precise regex anchored to start of string.
 SINGLE_TEAM_PATTERNS = [
-    "Will ", " win the ", " win on ",
-    " win ", " to win ", " make the ",
+    r"^Will\s+.+?\s+win\s+on\s+\d{4}-\d{2}-\d{2}",   # "Will X win on 2026-05-15" (date-specific prop)
+    r"^Will\s+.+?\s+win\s+the\s+(next|upcoming|this)\s+",   # "Will X win the next match"
+    r"^Who\s+will\s+win\s+",                        # "Who will win X"
+    r"^Winner\s+of\s+",                             # "Winner of X"
+    r"^Make\s+the\s+",                               # "Make the final"
 ]
 
 

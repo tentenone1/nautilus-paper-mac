@@ -992,37 +992,58 @@ class WhaleFollower(Strategy):
             self.log.error(f"Trade processing error: {e}")
 
     def _llm_score_signal(self, signal: WhaleSignal) -> int:
-        import urllib.request as ureq
+        """Score a whale signal using MiniMax cloud LLM."""
+        import urllib.request
+        import urllib.error
+        import re
         market = getattr(signal, "market_title", "") or ""
         whale = signal.whale_name or "unknown"
         side = getattr(signal, "side", "?") or "?"
         price = getattr(signal, "target_price", 0.5) or 0.5
         category = getattr(signal, "market_category", "") or ""
-        prompt = "Score this Polymarket signal 1-10. " +             f"Market: {market[:80]}. Whale: {whale[:30]}. " +             f"Side: {side} at {price:.3f}. Category: {category}."
-        # Inject whale intelligence context if available
+        prompt = (
+            f"Score this Polymarket signal 1-10. "
+            f"Market: {market[:80]}. Whale: {whale[:30]}. "
+            f"Side: {side} at {price:.3f}. Category: {category}."
+        )
         if self._whale_intel:
             intel = self._whale_intel.get(signal.whale_name)
             if intel:
                 prompt += f" Classification: {intel['classification']}, Trust: {intel['trust_score']}/10."
         if whale in ("unknown", "unknown whale", ""):
             prompt += " Unknown whale, be skeptical."
-        payload = json.dumps({
-            "model": "Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf",
+        system_prompt = "You are a scoring bot. Reply ONLY with a single digit 1-10. Nothing else."
+        payload = {
+            "model": "MiniMax-M2.7-highspeed",
             "messages": [
-                {"role": "system", "content": "Score betting signals 1-10. Known losing whales get 1-3. Good signals get 7-10. Reply ONLY a number 1-10."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            "max_tokens": 10, "temperature": 0.01
-        }).encode()
+            "max_tokens": 500,
+            "temperature": 0.01
+        }
         try:
-            req = ureq.Request("http://127.0.0.1:8080/v1/chat/completions", data=payload, headers={"Content-Type": "application/json"})
-            with ureq.urlopen(req, timeout=10) as resp:
-                data2 = json.loads(resp.read())
-            content = data2["choices"][0]["message"].get("content", "").strip()
-            import re
-            nums = re.findall(r"\d+", content.replace("<think>","").replace("</think>",""))
-            score = int(nums[0]) if nums else 5
-            return max(1, min(10, score))
+            req = urllib.request.Request(
+                "https://api.minimaxi.com/v1/chat/completions",
+                data=json.dumps(payload).encode(),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer sk-cp-iz5S9Gul58yomndZLBbL8C8HESGcneSWBlvwtnZa9GHTsfIKO-KBmnZyztXxo10isjimmpEpbOhjqqqApebopBlrOyMLbmSLmbnolTvX3M4D0FybYbGATCc"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+                raw = data["choices"][0]["message"]["content"]
+                # Extract score after last </think> (MiniMax thinking tags)
+                last_close = raw.rfind("</think>")
+                if last_close != -1:
+                    text = raw[last_close+6:].strip()
+                else:
+                    text = raw.strip()
+                nums = re.findall(r'\d+', text)
+                score = int(nums[0]) if nums else 5
+                return max(1, min(10, score))
         except Exception as e:
             self.log.warning(f"LLM score failed: {e}")
             return 5
@@ -1122,7 +1143,7 @@ class WhaleFollower(Strategy):
             elif any(re.search(p, title, re.IGNORECASE) for p in SPORTS_VS_BLACKLIST_PATTERNS):
                 self.log.info(f"REJECT vs: {title[:60]}")
                 return
-            elif any(p in title for p in SINGLE_TEAM_PATTERNS):
+            elif any(re.search(p, title, re.IGNORECASE) for p in SINGLE_TEAM_PATTERNS):
                 self.log.info(f"REJECT single-team: {title[:60]}")
                 return
 
@@ -1147,7 +1168,7 @@ class WhaleFollower(Strategy):
 
         # LLM signal quality scoring (1700 Qwen3.5-9B, ~0.3s)
         llm_score = self._llm_score_signal(signal)
-        if llm_score < 5:
+        if llm_score < 4:
             self.log.info(f"REJECT LLM score={llm_score}/10: {signal.whale_name}")
             return
         self.log.info(f"LLM score={llm_score}/10: {signal.whale_name} | market={getattr(signal, 'market_title', '')[:40]}")
@@ -1738,6 +1759,10 @@ class WhaleFollower(Strategy):
                     WHERE trade_id = ?
                 """, (exit_price, realized_pnl, realized_return, exit_reason, duration, trade_id))
                 conn.commit()
+                try:
+                    conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+                except Exception:
+                    pass
                 conn.close()
             except Exception as e:
                 self.log.error(f"[DB] Failed to update exit P&L: {e}")
