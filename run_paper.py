@@ -276,8 +276,8 @@ config_strategy = WhaleFollowerConfig(
     instrument_ids=instrument_ids,
     bankroll=float(os.getenv("BANKROLL", "500")),
     kelly_fraction=float(os.getenv("KELLY_FRACTION", "0.25")),
-    stop_loss_pct=float(os.getenv("STOP_LOSS_PCT", "0.15")),
-    take_profit_pct=float(os.getenv("TAKE_PROFIT_PCT", "0.30")),
+    stop_loss_pct=float(os.getenv("STOP_LOSS_PCT", "0.25")),
+    take_profit_pct=float(os.getenv("TAKE_PROFIT_PCT", "0.50")),
     max_position_pct=float(os.getenv("MAX_POSITION_PCT", "0.10")),
     max_single_position_pct=float(os.getenv("MAX_SINGLE_PCT", "0.05")),  # 5% = $25 max on $500
     min_confidence=float(os.getenv("MIN_CONFIDENCE", "0.25")),  # Lower threshold = more trades
