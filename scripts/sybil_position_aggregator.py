@@ -11,7 +11,7 @@ import logging
 import os
 import re
 import sqlite3
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from datetime import datetime, timezone
@@ -22,51 +22,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DATA_API_BASE = "https://data-api.polymarket.com"
+from scripts.sybil_config import get_config
+
+config = get_config()
+
+DATA_API_BASE = config.api.data_api_base
 
 # Paths for entity cluster integration
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRADES_DB = os.path.join(BASE_DIR, "research", "trades.db")
-ENTITY_CLUSTERS_PATH = os.path.join(BASE_DIR, "research", "entity_clusters.json")
+ENTITY_CLUSTERS_PATH = os.path.join(BASE_DIR, "research", config.paths.entity_clusters_file)
+STATE_FILE = os.path.join(BASE_DIR, config.paths.research_dir,
+                          "sybil_position_state.json")
 
-SYBIL_GROUPS = {
-    "sybil_group_1": {
-        "priority": "HIGH",
-        "wallets": {
-            "0x492442eab586f242b53bda933fd5de859c8a3782": "coordinator",
-            "0xacb206b460a17382a734de8d931cc176307eb989": "AppleTime67",
-            "0xe26cacfaa3f695a2a239e5918936b10d56f188cf": "Dvitaminbets",
-            "0xd106952ebf30a3125affd8a23b6c1f30c35fc79c": "Herdonia",
-            "0x437961a3b2684a4835da753e894d4b5cffdb2e16": "NewTeamSosed4",
-            "0xf39651f0addaad0221806d828197064b97feed0d": "Pajamapants",
-            "0xa71093cafc0c099b4ccab24c3cb8018d817923c4": "Talvez10",
-            "0xa8e089ade142c95538e06196e09c85681112ad50": "Wannac",
-            "0x0767aa79d578aead1c849fd9f0fdc6cdb50336b0": "beetlepimp",
-            "0x1117eade222413335b7ec959e5b48c1d3dbc3532": "benwyatt",
-            "0xa5ea13a81d2b7e8e424b182bdc1db08e756bd96a": "bossoskil1",
-            "0x29b52d98ac9ef9414b04164246c95bc63d74cc6c": "loitterer",
-            "0x84cfffc3f16dcc353094de30d4a45226eccd2f63": "mooseborzoi",
-            "0x32ccd9015a900fde62040162a04bedf093c668b3": "pilotlady",
-            "0xe48109602719f95c247fec255ffb71bab3f985a3": "trade-via-Gravia",
-        },
-    },
-    "sybil_group_2": {
-        "priority": "MODERATE",
-        "wallets": {
-            "0x5d1d9cfd66ee3068c2a8a57dedf1e1b006dcafd2": "coordinator",
-            "0x3b5c629f114098b0dee345fb78b7a3a013c7126e": "SMCAOMCRL",
-            "0xe96fb5321534971aed483029d2712917fda9ff4b": "meifei123",
-        },
-    },
-    "sybil_group_3": {
-        "priority": "LOW",
-        "wallets": {
-            "0x9495425feeb0c250accb89275c97587011b19a27": "LaBradfordSmith22",
-            "0xba389f76b0119aed07c53c9029852664bd97e406": "joblessfinalboss",
-            "0x39d3c773be30fcc73161fc6768f46d563a779ef0": "matanovik",
-        },
-    },
-}
+# Hardcoded sybil groups replaced by config — wallet data loaded from
+# config.groups via _build_groups().
+
+
+def _build_groups() -> dict:
+    """Convert config.groups into the {group_id: {priority, wallets}} format."""
+    result = {}
+    for gid, gdef in config.groups.items():
+        result[gid] = {
+            "priority": gdef.priority.upper(),
+            "wallets": gdef.addresses_dict(),
+        }
+    return result
 
 
 def load_entity_clusters() -> dict:
@@ -167,6 +148,93 @@ def is_active_position(pos: dict) -> bool:
     return True
 
 
+def _position_key(condition_id: str, address: str, outcome: str) -> str:
+    """Create a unique key for a position: {condition_id}|{address}|{outcome}."""
+    return f"{condition_id}|{address}|{outcome}"
+
+
+def load_previous_state() -> dict:
+    """Load previous scan state from sybil_position_state.json.
+
+    Returns the parsed state dict, or empty state on first run.
+    """
+    if not os.path.exists(STATE_FILE):
+        logger.info("No previous state found (first run), skipping delta detection")
+        return {"last_scan": None, "positions": {}}
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        logger.info(f"Loaded previous state: {len(state.get('positions', {}))} positions from {state.get('last_scan')}")
+        return state
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning(f"Failed to load previous state: {e}, treating as first run")
+        return {"last_scan": None, "positions": {}}
+
+
+def save_current_state(positions: dict, scan_time: str) -> None:
+    """Save current scan state to sybil_position_state.json for next comparison."""
+    state = {
+        "last_scan": scan_time,
+        "positions": positions,
+    }
+    try:
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+        logger.info(f"Saved state: {len(positions)} positions to {STATE_FILE}")
+    except OSError as e:
+        logger.warning(f"Failed to save state: {e}")
+
+
+def compute_delta(
+    current_positions: list[dict],
+    previous_state: dict,
+) -> tuple[dict, dict]:
+    """Compare current positions against previous state to detect deltas.
+
+    Delta categories:
+      - NEW: position key not in previous state
+      - INCREASED: current size > previous size * 1.2 (20%+ growth)
+      - REDUCED: current size < previous size * 0.5 (50%+ drop)
+      - UNCHANGED: size changed but within thresholds
+
+    Returns:
+        (current_keyed, delta_counts) where:
+          current_keyed: {position_key: position_dict} with 'delta' field added
+          delta_counts: dict of {delta_type: count}
+    """
+    prev_positions = previous_state.get("positions", {})
+    current_keyed: dict[str, dict] = {}
+    delta_counts = {"NEW": 0, "INCREASED": 0, "REDUCED": 0, "UNCHANGED": 0}
+
+    for pos in current_positions:
+        cond_id = pos.get("conditionId", "unknown")
+        address = pos.get("_wallet_address", "unknown")
+        outcome = pos.get("outcome", "unknown")
+        key = _position_key(cond_id, address, outcome)
+        size = float(pos.get("size", 0) or 0)
+
+        if key not in prev_positions:
+            delta = "NEW"
+        else:
+            prev_size = float(prev_positions[key].get("size_usd", 0) or 0)
+            if prev_size == 0 and size > 0:
+                delta = "NEW"
+            elif size > prev_size * 1.2:
+                delta = "INCREASED"
+            elif size < prev_size * 0.5:
+                delta = "REDUCED"
+            else:
+                delta = "UNCHANGED"
+
+        pos_with_delta = dict(pos)
+        pos_with_delta["delta"] = delta
+        current_keyed[key] = pos_with_delta
+        delta_counts[delta] += 1
+
+    return current_keyed, delta_counts
+
+
 def fetch_positions(address: str, timeout: int = 15) -> list[dict]:
     """Fetch positions for a wallet from Polymarket data API."""
     url = f"{DATA_API_BASE}/positions?user={address}"
@@ -182,7 +250,24 @@ def fetch_positions(address: str, timeout: int = 15) -> list[dict]:
         return []
 
 
-def aggregate_by_group() -> dict:
+def _fetch_wallet_positions(addr: str, label: str) -> dict:
+    """Fetch positions for a wallet and separate active positions."""
+    positions = fetch_positions(addr)
+    # Annotate each position with wallet identity for later aggregation
+    for p in positions:
+        p["_wallet_label"] = label
+        p["_wallet_address"] = addr
+    active = [p for p in positions if is_active_position(p)]
+    return {
+        "label": label,
+        "address": addr,
+        "total_positions": len(positions),
+        "active_positions": len(active),
+        "active": active,
+    }
+
+
+def aggregate_by_group() -> tuple[dict, dict]:
     """Query all sybil wallets, filter active positions, aggregate by group.
 
     Merges hardcoded SYBIL_GROUPS with dynamic entity clusters from
@@ -195,33 +280,81 @@ def aggregate_by_group() -> dict:
     }
 
     # Merge hardcoded groups with dynamic entity clusters
-    all_groups = dict(SYBIL_GROUPS)
+    all_groups = _build_groups()
     dyn_groups = load_entity_clusters()
     for gid, ginfo in dyn_groups.items():
         if gid not in all_groups:
             all_groups[gid] = ginfo
             logger.info(f"Merged dynamic group {gid}: {len(ginfo['wallets'])} wallets")
 
+    # Load previous scan state for delta detection
+    previous_state = load_previous_state()
+    total_delta_counts = {"NEW": 0, "INCREASED": 0, "REDUCED": 0, "UNCHANGED": 0, "CLOSED": 0}
+    current_state_positions: dict = {}  # {position_key: {size_usd, market_title, label}}
+
     for group_id, group_info in all_groups.items():
         all_active_positions = []
         wallet_results = {}
 
-        for addr, label in group_info["wallets"].items():
-            logger.info(f"Fetching positions for {label} ({addr})")
-            positions = fetch_positions(addr)
-            active = [p for p in positions if is_active_position(p)]
-            wallet_results[label] = {
-                "address": addr,
-                "total_positions": len(positions),
-                "active_positions": len(active),
-                "active": active,
+        wallet_items = list(group_info["wallets"].items())
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {
+                executor.submit(_fetch_wallet_positions, addr, label): (addr, label)
+                for addr, label in wallet_items
             }
-            all_active_positions.extend(active)
-            time.sleep(0.5)
+            for future in as_completed(futures):
+                try:
+                    result = future.result(timeout=30)
+                    wallet_results[result["label"]] = result
+                    all_active_positions.extend(result["active"])
+                except Exception as e:
+                    addr, label = futures[future]
+                    logger.warning(f"Failed to fetch {label}: {e}")
 
-        # Aggregate active positions by market (conditionId)
+        # Compute delta for each active position
+        current_keyed, delta_counts = compute_delta(all_active_positions, previous_state)
+
+        # Detect CLOSED positions (in previous but not in current)
+        current_keys = set(current_keyed.keys())
+        for prev_key, prev_pos in previous_state.get("positions", {}).items():
+            if prev_key not in current_keys:
+                delta_counts["CLOSED"] = delta_counts.get("CLOSED", 0) + 1
+                # Create a synthetic entry for closed position reporting
+                parts = prev_key.split("|")
+                if len(parts) == 3:
+                    cond_id, addr, outcome = parts
+                    closed_entry = {
+                        "conditionId": cond_id,
+                        "_wallet_address": addr,
+                        "_wallet_label": prev_pos.get("label", addr[:10]),
+                        "outcome": outcome,
+                        "size": 0.0,
+                        "avgPrice": 0,
+                        "curPrice": 0,
+                        "currentValue": 0,
+                        "title": prev_pos.get("market_title", ""),
+                        "delta": "CLOSED",
+                        "prev_size_usd": prev_pos.get("size_usd", 0),
+                    }
+                    current_keyed[prev_key] = closed_entry
+
+        # Accumulate delta counts across all groups
+        for delta_type, count in delta_counts.items():
+            total_delta_counts[delta_type] += count
+
+        # Collect current state positions (exclude CLOSED — they're no longer active)
+        for key, pos in current_keyed.items():
+            if pos.get("delta") != "CLOSED":
+                current_state_positions[key] = {
+                    "size_usd": round(float(pos.get("size", 0) or 0), 2),
+                    "market_title": pos.get("title", ""),
+                    "label": pos.get("_wallet_label", ""),
+                }
+
+        # Aggregate positions by market (conditionId)
+        # Uses current_keyed which includes both active and closed positions
         market_agg = {}
-        for pos in all_active_positions:
+        for pos in current_keyed.values():
             cond_id = pos.get("conditionId", "unknown")
             if cond_id not in market_agg:
                 market_agg[cond_id] = {
@@ -238,15 +371,20 @@ def aggregate_by_group() -> dict:
                 }
             outcome = pos.get("outcome", "unknown")
             size = float(pos.get("size", 0) or 0)
-            market_agg[cond_id]["wallets"].append({
-                "label": label,
-                "address": addr,
+            wallet_entry = {
+                "label": pos["_wallet_label"],
+                "address": pos["_wallet_address"],
                 "outcome": outcome,
                 "size_usd": size,
                 "avg_price": pos.get("avgPrice", 0),
                 "current_price": pos.get("curPrice", 0),
                 "position_value": pos.get("currentValue", 0),
-            })
+                "delta": pos.get("delta", "UNCHANGED"),
+            }
+            # Include previous size for CLOSED positions
+            if pos.get("delta") == "CLOSED":
+                wallet_entry["prev_size_usd"] = pos.get("prev_size_usd", 0)
+            market_agg[cond_id]["wallets"].append(wallet_entry)
             market_agg[cond_id]["total_size_usd"] += size
             if outcome.lower() == "yes":
                 market_agg[cond_id]["yes_size_usd"] += size
@@ -280,21 +418,30 @@ def aggregate_by_group() -> dict:
         "total_groups": len(all_groups),
         "total_wallets": sum(len(g["wallets"]) for g in all_groups.values()),
         "total_active_exposure_usd": round(total_all, 2),
+        "delta_summary": {
+            "new_positions": total_delta_counts.get("NEW", 0),
+            "increased": total_delta_counts.get("INCREASED", 0),
+            "reduced": total_delta_counts.get("REDUCED", 0),
+            "closed": total_delta_counts.get("CLOSED", 0),
+        },
     }
 
-    return result
+    return result, current_state_positions
 
 
 def main():
-    output_dir = "/home/elon-1/workspace/nautilus-trading/research"
-    output_path = os.path.join(output_dir, "sybil_positions.json")
+    output_dir = os.path.join(BASE_DIR, config.paths.research_dir)
+    output_path = os.path.join(output_dir, config.paths.positions_file)
 
     logger.info("Starting sybil position aggregation (v2)...")
-    result = aggregate_by_group()
+    result, current_state = aggregate_by_group()
 
     os.makedirs(output_dir, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(result, f, indent=2)
+
+    # Save current state for next scan's delta detection
+    save_current_state(current_state, result["generated_at"])
 
     for gid, gdata in result["groups"].items():
         logger.info(
@@ -306,6 +453,15 @@ def main():
 
     logger.info(f"Output: {output_path}")
     print(json.dumps(result["summary"], indent=2))
+
+    ds = result["summary"].get("delta_summary", {})
+    if ds:
+        logger.info(
+            f"Delta summary: NEW={ds.get('new_positions', 0)}, "
+            f"INCREASED={ds.get('increased', 0)}, "
+            f"REDUCED={ds.get('reduced', 0)}, "
+            f"CLOSED={ds.get('closed', 0)}"
+        )
 
 
 if __name__ == "__main__":
