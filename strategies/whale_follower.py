@@ -1477,6 +1477,14 @@ class WhaleFollower(Strategy):
         # Liquidity-based size adjustment (Track A)
         size_usd = self._adjust_size_for_liquidity(size_usd, inst_id)
 
+        # ── HARD CAP: enforce max_single_position_pct AFTER liquidity adjustment
+        # This prevents liquidity multipliers from bypassing the 2% hard cap
+        # which would trigger kill_switch on routine positions.
+        max_single_pct = getattr(self.config, "max_single_position_pct", 0.02)
+        hard_cap = self.config.bankroll * max_single_pct
+        if size_usd > hard_cap:
+            size_usd = hard_cap
+
         # Brief guard: if even the computed size exceeds available, skip
         if size_usd > available:
             self.log.info(
