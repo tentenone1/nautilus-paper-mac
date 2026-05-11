@@ -12,6 +12,7 @@ Usage:
 import asyncio
 import json
 import os
+import signal
 import sqlite3
 import sys
 
@@ -50,7 +51,12 @@ def _check_pid_lock():
         except OSError:
             pass
 
+    def _sigterm_handler(signum, frame):
+        _cleanup_pid()
+        sys.exit(0)
+
     atexit.register(_cleanup_pid)
+    signal.signal(signal.SIGTERM, _sigterm_handler)
 
 _check_pid_lock()
 
