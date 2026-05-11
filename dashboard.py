@@ -298,6 +298,9 @@ def build_html(proc_info, db_stats, log_text, activity, pnl_stats=None):
     pnl_actual = pnl_summary.get("total_actual_pnl", 0)
     pnl_divergence = pnl_summary.get("divergence", 0)
     resolved_count = pnl_summary.get("resolved_trades", 0)
+    starting_balance = 10000.0
+    current_balance = starting_balance + pnl_realized
+    current_balance_color = "green" if current_balance >= starting_balance else "red"
     pnl_realized_color = "green" if pnl_realized >= 0 else "red"
     pnl_actual_color = "green" if pnl_actual >= 0 else "red"
     pnl_div_color = "green" if pnl_divergence >= 0 else "red"
@@ -367,6 +370,7 @@ tr:hover{background:#1c2128}
 <div class="metric"><div class="label">Open Positions</div><div class="value">""" + str(pnl_summary.get("open_positions", 0)) + """</div></div>
 </div>
 <div class="metrics">
+<div class="metric"><div class="label">Total Balance</div><div class="value """ + current_balance_color + """">""" + fmt_usd(current_balance) + """</div></div>
 <div class="metric"><div class="label">Sim. P&L (Mark-to-Market)</div><div class="value """ + pnl_realized_color + """">""" + fmt_usd(pnl_realized) + """</div></div>
 <div class="metric"><div class="label">Real P&L (Resolution-Based)</div><div class="value """ + pnl_actual_color + """">""" + fmt_usd(pnl_actual) + """</div></div>
 <div class="metric"><div class="label">Divergence (Real − Sim)</div><div class="value """ + pnl_div_color + """">""" + fmt_usd(pnl_divergence) + """</div></div>
@@ -475,6 +479,9 @@ function initStream() {
                 else if (txt.includes('Sim. P&L')) {
                     valEl.textContent = fmtUsd(d.pnl_realized);
                     valEl.className = 'value ' + (d.pnl_realized >= 0 ? 'green' : 'red');
+                } else if (txt.includes('Total Balance')) {
+                    valEl.textContent = fmtUsd(d.total_balance);
+                    valEl.className = 'value ' + (d.total_balance >= 10000 ? 'green' : 'red');
                 } else if (txt.includes('Real P&L')) {
                     valEl.textContent = fmtUsd(d.pnl_actual);
                     valEl.className = 'value ' + (d.pnl_actual >= 0 ? 'green' : 'red');
@@ -593,6 +600,8 @@ def api_stream():
                 pnl_div = pnl_summary.get("divergence", 0)
                 open_pos = pnl_summary.get("open_positions", 0)
                 resolved = pnl_summary.get("resolved_trades", 0)
+                starting_balance = 10000.0
+                current_balance = starting_balance + pnl_realized
 
                 data = {
                     "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -605,6 +614,7 @@ def api_stream():
                     "pnl_divergence": round(pnl_div, 2),
                     "open_positions": open_pos,
                     "resolved_trades": resolved,
+                    "total_balance": round(current_balance, 2),
                     "log_tail": log_text[-2000:] if log_text else "",
                     "recent_activity": activity[:10],
                 }
