@@ -510,7 +510,7 @@ def _full_health_check():
 
     checks = {
         "open_positions": len(strategy._open_positions) if strategy else 0,
-        "daily_pnl": getattr(strategy, "_daily_pnl", 0.0) if strategy else 0.0,
+        "daily_pnl": metrics.get("daily_pnl", 0.0),
         "killswitch_active": getattr(strategy, "_kill_switch_breached", False) if strategy else False,
         "daily_loss_breached": getattr(strategy, "_daily_loss_breached", False) if strategy else False,
         "ws_connected": _WS_CONNECTED["value"],

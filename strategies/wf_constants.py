@@ -184,6 +184,12 @@ SINGLE_TEAM_PATTERNS = [
 ]
 
 
+# ── Entry Price Filter ─────────────────────────────────────────────────────────
+MIN_ENTRY_PRICE = 0.05  # Reject markets priced below $0.05 (filters 166:1 long shots)
+
+# ── Confidence Threshold ───────────────────────────────────────────────────────
+MIN_CONFIDENCE = 0.55  # Minimum confidence to enter a trade
+
 # ── Liquidity Tier Thresholds (volume + liquidity in USD) ────────────────────
 
 LIQUIDITY_TIER4_THRESHOLD = 100_000  # Illiquid: reduce to 25% of Kelly
