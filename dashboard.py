@@ -57,29 +57,24 @@ def get_process_info():
 
 
 def get_log_tail(pid=None, lines=LOG_LINES):
-    if pid:
+    # macOS/Linux: read from paper.log instead of /proc/<pid>/fd/1
+    log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", "paper.log")
+    if os.path.exists(log_path):
         try:
-            # Use timeout + head to avoid blocking on pipes
-            result = subprocess.run(
-                ["timeout", "3", "head", "-n", str(lines), "/proc/" + str(pid) + "/fd/1"],
-                capture_output=True, text=True, timeout=8
-            )
-            if result.stdout:
-                text = result.stdout.strip()
-                parts = text.split("\n")
-                if len(parts) > lines:
-                    return "\n".join(parts[-lines:])
-                return text
+            with open(log_path) as f:
+                all_lines = f.readlines()
+            if all_lines:
+                return "".join(all_lines[-lines:]).strip()
         except Exception:
             pass
-        # Fallback: try to find a log file
+    # Fallback: try dashboard.log
+    log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.log")
+    if os.path.exists(log_path):
         try:
-            log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.log")
-            if os.path.exists(log_path):
-                with open(log_path) as f:
-                    text = f.read()
-                parts = text.strip().split("\n")
-                return "\n".join(parts[-lines:])
+            with open(log_path) as f:
+                text = f.read()
+            parts = text.strip().split("\n")
+            return "\n".join(parts[-lines:])
         except Exception:
             pass
     return "No logs available"
@@ -497,9 +492,17 @@ def api_pnl():
 
 
 if __name__ == "__main__":
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        local_ip = "127.0.0.1"
     print("Nautilus Whale Follower Dashboard")
     print("=" * 50)
-    print("  Open: http://192.168.50.218:8502")
-    print("  API:  http://192.168.50.218:8502/api/status")
+    print(f"  Open: http://{local_ip}:8502")
+    print(f"  API:  http://{local_ip}:8502/api/status")
     print("=" * 50)
     app.run(host="0.0.0.0", port=8502, debug=False)
