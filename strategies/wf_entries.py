@@ -178,6 +178,7 @@ def enter_position(
         edge_score=edge_score,
         available_balance=available,
         market_category=market_category,
+        max_single_position_pct=config.max_single_position_pct,  # hard cap
         whale_tiering=whale_tiering,
     )
     if size_usd <= 0:

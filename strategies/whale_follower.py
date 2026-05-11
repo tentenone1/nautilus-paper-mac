@@ -2680,6 +2680,14 @@ class WhaleFollower(Strategy):
             cap = effective_bankroll * self.config.max_position_pct
             floor = 0.0
 
+        # ── HARD CAP: enforce max_single_position_pct (2% by default) ──
+        # Align with check_position_limits() to prevent kill switch triggers
+        # on routine Kelly-sized positions.
+        max_single_pct = getattr(self.config, "max_single_position_pct", 0.02)
+        hard_cap = effective_bankroll * max_single_pct
+        if cap > hard_cap:
+            cap = hard_cap
+
         # Clamp: floor <= size <= cap
         if size < floor:
             size = floor

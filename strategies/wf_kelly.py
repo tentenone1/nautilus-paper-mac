@@ -26,7 +26,7 @@ def kelly_size(
     edge_score: float = 0.0,
     available_balance: float | None = None,
     market_category: str = "",
-
+    max_single_position_pct: float = 0.02,  # hard cap (same as check_position_limits)
     whale_tiering=None,
 ) -> float:
     """Kelly criterion position sizing with edge_score calibration.
@@ -107,6 +107,13 @@ def kelly_size(
 
     cap = effective_bankroll * max_pct
     floor = effective_bankroll * min_pct
+
+    # ── HARD CAP: enforce max_single_position_pct (2% by default) ──
+    # Align with check_position_limits() to prevent kill switch triggers
+    # on routine Kelly-sized positions.
+    hard_cap = effective_bankroll * max_single_position_pct
+    if cap > hard_cap:
+        cap = hard_cap
 
     # Clamp: floor <= size <= cap
     if size < floor:
