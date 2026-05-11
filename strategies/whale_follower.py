@@ -1478,10 +1478,16 @@ class WhaleFollower(Strategy):
         size_usd = self._adjust_size_for_liquidity(size_usd, inst_id)
 
         # ── HARD CAP: enforce max_single_position_pct AFTER liquidity adjustment
-        # This prevents liquidity multipliers from bypassing the 2% hard cap
-        # which would trigger kill_switch on routine positions.
+        # Must use validation_capital_base (like check_position_limits does) to ensure
+        # the cap matches the actual limit. Using bankroll would give a $200 cap
+        # while the limit is $20 (2% of $1000 validation capital).
         max_single_pct = getattr(self.config, "max_single_position_pct", 0.02)
-        hard_cap = self.config.bankroll * max_single_pct
+        capital = (
+            self.config.validation_capital_base
+            if self.config.validation_capital_base > 0
+            else self.config.bankroll
+        )
+        hard_cap = capital * max_single_pct
         if size_usd > hard_cap:
             size_usd = hard_cap
 
