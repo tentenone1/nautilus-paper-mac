@@ -13,9 +13,11 @@ import json
 import os
 import sqlite3
 import subprocess
+import threading
+import time
 from datetime import datetime, timezone
 
-from flask import Flask, jsonify, send_file
+from flask import Flask, jsonify, send_file, Response
 
 from components.resolution_poller import ResolutionPoller
 
@@ -362,6 +364,7 @@ tr:hover{background:#1c2128}
 <div class="metric"><div class="label">Total Signals</div><div class="value">""" + str(ts) + """</div></div>
 <div class="metric"><div class="label">Unsignaled</div><div class="value red">""" + str(un) + """</div></div>
 <div class="metric"><div class="label">Signals Today</div><div class="value">""" + str(st) + """</div></div>
+<div class="metric"><div class="label">Open Positions</div><div class="value">""" + str(pnl_summary.get("open_positions", 0)) + """</div></div>
 </div>
 <div class="metrics">
 <div class="metric"><div class="label">Sim. P&L (Mark-to-Market)</div><div class="value """ + pnl_realized_color + """">""" + fmt_usd(pnl_realized) + """</div></div>
@@ -412,13 +415,99 @@ tr:hover{background:#1c2128}
 </div>
 </div>
 <script>
+var source = null;
+var retryDelay = 3000;
+function fmtUsd(v) {
+    if (v === null || v === undefined) return '$0.00';
+    var abs = Math.abs(v);
+    var sign = v < 0 ? '-' : '';
+    if (abs >= 1000) return sign + '$' + abs.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    return sign + '$' + abs.toFixed(2);
+}
+function initStream() {
+    if (source) { source.close(); }
+    source = new EventSource('/api/stream');
+    source.onmessage = function(e) {
+        try {
+            var d = JSON.parse(e.data);
+            if (d.error) { console.warn('Stream error:', d.error); return; }
+            retryDelay = 3000;
+            // Update header timestamp
+            var ts = document.querySelector('.header .time');
+            if (ts && d.timestamp) {
+                var date = new Date(d.timestamp);
+                ts.textContent = date.toISOString().replace('T',' ').substring(0,19) + ' UTC';
+            }
+            // Update status bar
+            var dot = document.querySelector('.status-dot');
+            var statusText = document.querySelector('.status-text');
+            if (dot && d.process) {
+                dot.className = 'status-dot ' + (d.process.running ? 'running' : 'stopped');
+                if (statusText) {
+                    statusText.textContent = d.process.running
+                        ? '✅ Running — PID ' + d.process.main_pid + ' | ' + (d.process.uptime_output || '')
+                        : '❌ Not running';
+                }
+            }
+            // Update metrics
+            var vals = document.querySelectorAll('.metric .value');
+            // Metric order: whales, active, signals, unsignaled, signals_today, pnl_real, pnl_actual, pnl_div, resolved
+            // But unsignaled not in stream, so shift
+            var metricMap = [
+                null, // unsignaled not streamed
+                null, // signals today
+                d.pnl_realized,
+                d.pnl_actual,
+                d.pnl_divergence,
+                d.resolved_trades
+            ];
+            var count = 0;
+            var metrics = document.querySelectorAll('.metric');
+            metrics.forEach(function(m) {
+                var label = m.querySelector('.label');
+                if (!label) return;
+                var txt = label.textContent;
+                var valEl = m.querySelector('.value');
+                if (!valEl) return;
+                if (txt.includes('Whales Tracked')) valEl.textContent = d.whales_tracked || 0;
+                else if (txt.includes('Active')) valEl.textContent = d.active_whales || 0;
+                else if (txt.includes('Signals Today')) valEl.textContent = d.signals_today || 0;
+                else if (txt.includes('Sim. P&L')) {
+                    valEl.textContent = fmtUsd(d.pnl_realized);
+                    valEl.className = 'value ' + (d.pnl_realized >= 0 ? 'green' : 'red');
+                } else if (txt.includes('Real P&L')) {
+                    valEl.textContent = fmtUsd(d.pnl_actual);
+                    valEl.className = 'value ' + (d.pnl_actual >= 0 ? 'green' : 'red');
+                } else if (txt.includes('Divergence')) {
+                    valEl.textContent = fmtUsd(d.pnl_divergence);
+                    valEl.className = 'value ' + (d.pnl_divergence >= 0 ? 'green' : 'red');
+                } else if (txt.includes('Resolved')) valEl.textContent = d.resolved_trades || 0;
+                else if (txt.includes('Open') && txt.includes('Position')) valEl.textContent = d.open_positions || 0;
+            });
+            // Update logs tab if visible
+            var logDiv = document.querySelector('.log');
+            if (logDiv && d.log_tail) {
+                logDiv.textContent = d.log_tail;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        } catch(err) {
+            console.warn('SSE parse error:', err);
+        }
+    };
+    source.onerror = function() {
+        source.close();
+        setTimeout(initStream, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 30000);
+    };
+}
 function switchTab(name){
 document.querySelectorAll('.tab-content').forEach(function(el){el.classList.remove('active')});
 document.querySelectorAll('.tab').forEach(function(el){el.classList.remove('active')});
 document.getElementById(name).classList.add('active');
 event.target.classList.add('active');
 }
-setTimeout(function(){location.reload()},30000);
+// Start SSE stream on load
+initStream();
 </script>
 </body>
 </html>"""
@@ -481,6 +570,58 @@ def api_signal_gap_health():
         "alerts": [],
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
+
+
+@app.route("/api/stream")
+def api_stream():
+    """Server-Sent Events — live dashboard updates every 5s."""
+    def generate():
+        while True:
+            try:
+                proc_info = get_process_info()
+                db_stats = get_db_stats()
+                pnl_stats = get_pnl_stats()
+                log_text = ""
+                activity = []
+                if proc_info["running"]:
+                    log_text = get_log_tail(proc_info["main_pid"])
+                    activity = parse_log_signals(log_text)
+
+                pnl_summary = pnl_stats.get("summary", {})
+                pnl_realized = pnl_summary.get("total_realized_pnl", 0)
+                pnl_actual = pnl_summary.get("total_actual_pnl", 0)
+                pnl_div = pnl_summary.get("divergence", 0)
+                open_pos = pnl_summary.get("open_positions", 0)
+                resolved = pnl_summary.get("resolved_trades", 0)
+
+                data = {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "process": proc_info,
+                    "whales_tracked": db_stats.get("whale_count", 0),
+                    "active_whales": db_stats.get("active_whales", 0),
+                    "signals_today": db_stats.get("signals_today", 0),
+                    "pnl_realized": round(pnl_realized, 2),
+                    "pnl_actual": round(pnl_actual, 2),
+                    "pnl_divergence": round(pnl_div, 2),
+                    "open_positions": open_pos,
+                    "resolved_trades": resolved,
+                    "log_tail": log_text[-2000:] if log_text else "",
+                    "recent_activity": activity[:10],
+                }
+                yield f"data: {json.dumps(data)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            time.sleep(5)
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @app.route("/api/pnl")
