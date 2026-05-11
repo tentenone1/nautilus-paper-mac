@@ -273,6 +273,7 @@ config_strategy = WhaleFollowerConfig(
     stop_loss_pct=float(os.getenv("STOP_LOSS_PCT", "0.15")),
     take_profit_pct=float(os.getenv("TAKE_PROFIT_PCT", "0.30")),
     max_position_pct=float(os.getenv("MAX_POSITION_PCT", "0.10")),
+    max_single_position_pct=float(os.getenv("MAX_SINGLE_PCT", "0.05")),  # 5% = $5 max on $100
     min_confidence=float(os.getenv("MIN_CONFIDENCE", "0.25")),  # Lower threshold = more trades
     auto_trade=os.getenv("AUTO_TRADE", "true").lower() == "true",
     test_mode=False,  # Real mode: actual whale signals → real trades
