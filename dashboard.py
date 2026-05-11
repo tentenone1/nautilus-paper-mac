@@ -298,7 +298,7 @@ def build_html(proc_info, db_stats, log_text, activity, pnl_stats=None):
     pnl_actual = pnl_summary.get("total_actual_pnl", 0)
     pnl_divergence = pnl_summary.get("divergence", 0)
     resolved_count = pnl_summary.get("resolved_trades", 0)
-    starting_balance = 100.0
+    starting_balance = 500.0
     current_balance = starting_balance + pnl_realized
     current_balance_color = "green" if current_balance >= starting_balance else "red"
     pnl_realized_color = "green" if pnl_realized >= 0 else "red"
@@ -481,7 +481,7 @@ function initStream() {
                     valEl.className = 'value ' + (d.pnl_realized >= 0 ? 'green' : 'red');
                 } else if (txt.includes('Total Balance')) {
                     valEl.textContent = fmtUsd(d.total_balance);
-                    valEl.className = 'value ' + (d.total_balance >= 100 ? 'green' : 'red');
+                    valEl.className = 'value ' + (d.total_balance >= 500 ? 'green' : 'red');
                 } else if (txt.includes('Real P&L')) {
                     valEl.textContent = fmtUsd(d.pnl_actual);
                     valEl.className = 'value ' + (d.pnl_actual >= 0 ? 'green' : 'red');
@@ -600,7 +600,7 @@ def api_stream():
                 pnl_div = pnl_summary.get("divergence", 0)
                 open_pos = pnl_summary.get("open_positions", 0)
                 resolved = pnl_summary.get("resolved_trades", 0)
-                starting_balance = 100.0
+                starting_balance = 500.0
                 current_balance = starting_balance + pnl_realized
 
                 data = {
