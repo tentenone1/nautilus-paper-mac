@@ -96,9 +96,12 @@ from strategies.wf_constants import (
     SPORTS_OU_BLACKLIST_PATTERNS,
     SPORTS_VS_BLACKLIST_PATTERNS,
     SINGLE_TEAM_PATTERNS,
+    MIN_ENTRY_PRICE,
+    MIN_CONFIDENCE,
 )
 from strategies.wf_sports import is_sports_market, get_market_event_time, should_exit_for_sports
 from strategies.wf_db_ops import log_trade_to_db, recover_open_positions
+from strategies.wf_position_persistence import save_open_positions, load_open_positions
 from strategies.wf_signal_proc import on_signal, scan_whale_positions, process_trade_buffer, llm_score_signal
 from strategies.wf_position_checks import check_all_positions, check_daily_loss_limit
 from strategies.wf_position_checks import (
@@ -422,6 +425,23 @@ class WhaleFollower(Strategy):
             inst_key = pos['inst_key']
             if inst_key not in self._open_positions:
                 self._open_positions[inst_key] = {k: v for k, v in pos.items() if k != 'inst_key'}
+
+        # Recover open positions from JSON file (restart persistence)
+        json_positions = load_open_positions()
+        for inst_key, pos_info in json_positions.items():
+            if inst_key not in self._open_positions:
+                self._open_positions[inst_key] = pos_info
+        if json_positions:
+            self.log.info(f"[RECOVER] Loaded {len(json_positions)} positions from JSON file")
+
+        # Sync recovered positions to metrics (so /health shows accurate counts)
+        try:
+            from components.metrics import get_metrics
+            metrics = get_metrics()
+            metrics.set_open_positions(len(self._open_positions))
+            self.log.info(f"[METRICS] Synced open_positions={len(self._open_positions)} to metrics")
+        except Exception as e:
+            self.log.warning(f"[METRICS] Failed to sync recovered positions: {e}")
 
         self._last_scan = time.time()
 
@@ -750,6 +770,17 @@ class WhaleFollower(Strategy):
                 "confidence": confidence,
                 "kelly_fraction": kelly_fraction,
             }
+            save_open_positions(self._open_positions)
+
+            # ── Update metrics on entry ──────────────────────────────────
+            # Use set_open_positions (NOT increment_trade_entered) because position
+            # may not yet be in Nautilus cache — metrics must reflect confirmed state
+            try:
+                from components.metrics import get_metrics
+                metrics = get_metrics()
+                metrics.set_open_positions(len(self._open_positions))
+            except Exception:
+                pass
 
             # ── Phase 1: TRADE_FILLED event + latency/slippage metrics ──────────────────────────────
             # Emit event after fill received, compute latency and slippage
@@ -992,10 +1023,14 @@ class WhaleFollower(Strategy):
             self.log.error(f"Trade processing error: {e}")
 
     def _llm_score_signal(self, signal: WhaleSignal) -> int:
-        """Score a whale signal using MiniMax cloud LLM."""
+        """Score a whale signal using MiniMax cloud LLM.
+        
+        Circuit breaker: whale_api (protects MiniMax API calls from cascade failures).
+        """
         import urllib.request
         import urllib.error
         import re
+        from strategies.wf_circuit_breaker import get_whale_api_breaker, CircuitBreakerOpen
         market = getattr(signal, "market_title", "") or ""
         whale = signal.whale_name or "unknown"
         side = getattr(signal, "side", "?") or "?"
@@ -1022,13 +1057,13 @@ class WhaleFollower(Strategy):
             "max_tokens": 500,
             "temperature": 0.01
         }
-        try:
+        def _make_llm_request():
             req = urllib.request.Request(
                 "https://api.minimaxi.com/v1/chat/completions",
                 data=json.dumps(payload).encode(),
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer sk-cp-iz5S9Gul58yomndZLBbL8C8HESGcneSWBlvwtnZa9GHTsfIKO-KBmnZyztXxo10isjimmpEpbOhjqqqApebopBlrOyMLbmSLmbnolTvX3M4D0FybYbGATCc"
+                    "Authorization": "Bearer sk-cp-...ATCc"
                 },
                 method="POST"
             )
@@ -1036,7 +1071,7 @@ class WhaleFollower(Strategy):
                 data = json.loads(resp.read().decode())
                 raw = data["choices"][0]["message"]["content"]
                 # Extract score after last </think> (MiniMax thinking tags)
-                last_close = raw.rfind("</think>")
+                last_close = raw.rfind("\n\n</Close>\n")
                 if last_close != -1:
                     text = raw[last_close+6:].strip()
                 else:
@@ -1044,6 +1079,14 @@ class WhaleFollower(Strategy):
                 nums = re.findall(r'\d+', text)
                 score = int(nums[0]) if nums else 5
                 return max(1, min(10, score))
+
+        try:
+            breaker = get_whale_api_breaker()
+            score = breaker.call(_make_llm_request)
+            return score
+        except CircuitBreakerOpen:
+            self.log.warning("Whale API circuit breaker OPEN — skipping LLM scoring")
+            return 5
         except Exception as e:
             self.log.warning(f"LLM score failed: {e}")
             return 5
@@ -1432,6 +1475,21 @@ class WhaleFollower(Strategy):
         if instrument is None:
             return
 
+        # ── Minimum price filter — reject near-zero EV long shots ─────────────────
+        if price < MIN_ENTRY_PRICE:
+            self.log.info(
+                f"MIN_PRICE_REJECTED | {market_title[:50]} | "
+                f"price=${price:.4f} < ${MIN_ENTRY_PRICE} | whale={whale_name}"
+            )
+            return
+
+        # ── Confidence filter — reject low-confidence signals ────────────────
+        if confidence < 0.15:
+            self.log.info(
+                f"REJECT confidence={confidence:.2f} < 0.15 | {inst_id}"
+            )
+            return
+
         # Check existing position via cache (pre-subscribed instruments)
         open_positions = self.cache.positions_open(instrument_id=inst_id)
         if open_positions and open_positions[0].quantity.as_double() != 0:
@@ -1635,21 +1693,8 @@ class WhaleFollower(Strategy):
         """Fetch the real market midpoint price from Polymarket CLOB API.
         Returns the midpoint price or None if API fails.
         """
-        try:
-            import urllib.request, json
-            parts = inst_key.replace(".POLYMARKET", "").split("-")
-            if len(parts) >= 2:
-                token_id = parts[-1]
-                url = f"https://clob.polymarket.com/midpoint?token_id={token_id}"
-                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    data = json.loads(resp.read().decode())
-                price_str = data.get("midpoint") or data.get("price")
-                if price_str is not None:
-                    return float(price_str)
-        except Exception:
-            pass
-        return None
+        from strategies.wf_market_data import fetch_real_midpoint
+        return fetch_real_midpoint(inst_key)
 
     def _resolve_exit_price(self, pos_info: dict) -> float:
         """Determine exit price using REAL market data (no random walk).
@@ -1659,49 +1704,15 @@ class WhaleFollower(Strategy):
         2. CLOB API midpoint -> actual trading price
         3. Fallback: deterministic estimate (edge-based drift, no Gaussian noise)
         """
-        entry = pos_info.get("entry_price", 0.5)
-        inst_key = pos_info.get("inst_key", "")
-        side = pos_info.get("side", "BUY")
-
-        # 1. Check if market is resolved
-        condition_id = pos_info.get("condition_id", "")
-        if condition_id:
-            try:
-                from components.resolution_poller import get_market_resolution, calculate_actual_pnl
-                market = get_market_resolution(condition_id)
-                if market and market.get("resolved"):
-                    winning_token_id = market.get("winning_token_id", "")
-                    our_token_id = ""
-                    if inst_key and "-" in inst_key:
-                        our_token_id = inst_key.replace(".POLYMARKET", "").split("-")[-1]
-                    if our_token_id and winning_token_id:
-                        size = pos_info.get("size", 100.0)
-                        pnl_info = calculate_actual_pnl(
-                            entry_price=entry,
-                            position_size_usd=size,
-                            our_token_id=our_token_id,
-                            winning_token_id=winning_token_id,
-                            side=side,
-                        )
-                        if pnl_info.get("won"):
-                            return 1.00
-                        else:
-                            return 0.00
-            except Exception:
-                pass
-
-        # 2. Try real midpoint from CLOB API
-        if inst_key:
-            mid = self._fetch_real_midpoint(inst_key)
-            if mid is not None and 0.01 <= mid <= 0.99:
-                return mid
-
-        # 3. Fallback: deterministic estimate (NO random walk)
-        edge = pos_info.get("edge_score", 0.0) or 0.0
-        target = 1.0 if side.upper() in ("BUY", "LONG") else 0.0
-        drift = edge * (target - entry) * 0.30
-        price = entry + drift
-        return max(0.01, min(0.99, price))
+        from strategies.wf_market_data import resolve_exit_price
+        from components.resolution_poller import get_market_resolution, calculate_actual_pnl
+        return resolve_exit_price(
+            pos_info=pos_info,
+            instrument_id_str=pos_info.get("inst_key", ""),
+            get_market_resolution=get_market_resolution,
+            calculate_actual_pnl=calculate_actual_pnl,
+            log_func=self.log.info,
+        )
 
     def exit_position(self, instrument_id: InstrumentId = None, exit_reason: str = "manual") -> None:
         """Close current position with P&L tracking and DB update."""
@@ -1726,6 +1737,7 @@ class WhaleFollower(Strategy):
         # Look up position info from our registry
         pos_info = self._open_positions.pop(inst_key, {})
         pos_info["inst_key"] = inst_key
+        save_open_positions(self._open_positions)
         
         # Simulate exit price
         entry_price = pos_info.get("entry_price", 0.50)
@@ -1844,7 +1856,8 @@ class WhaleFollower(Strategy):
         self.log.info(
             f"EXIT {exit_reason}: {qty:.0f} shrs @ ${exit_price:.4f} | "
             f"PnL: ${pnl_sign}{realized_pnl:.2f} ({realized_return:+.2%}) | "
-            f"held {duration:.0f}s | {inst_key[:50]}..."
+            f"held {duration:.0f}s | daily_pnl=${self._daily_pnl:+.2f} | "
+            f"{inst_key[:40]}..."
         )
 
     def exit_all_positions(self) -> None:
@@ -1948,6 +1961,7 @@ class WhaleFollower(Strategy):
                 # Clean up stale entry even on error
                 if inst_key in self._open_positions:
                     del self._open_positions[inst_key]
+                    save_open_positions(self._open_positions)
         
         # Phase 2: Check ALL open positions for stop-loss, take-profit, resolution exits
         # FIX: iterate self._open_positions (includes dynamic instruments) instead of
@@ -2150,8 +2164,10 @@ class WhaleFollower(Strategy):
         # Heartbeat log for health monitor — throttle to once per minute
         now = time.time()
         if not hasattr(self, '_last_heartbeat') or (now - self._last_heartbeat) > 60:
-            open_count = len(self.cache.positions_open(venue=Venue("POLYMARKET")))
-            self.log.info(f"Exit timer heartbeat — {open_count} open positions")
+            # Use self._open_positions (JSON/DB recovered) + Nautilus cache for full count
+            nautilus_open = len(self.cache.positions_open(venue=Venue("POLYMARKET")))
+            total_open = len(self._open_positions)
+            self.log.info(f"Exit timer heartbeat — {total_open} positions (self._open_positions={total_open}, nautilus_cache={nautilus_open})")
             self._last_heartbeat = now
         
         # Whale position scanning (moved here from on_quote_tick so it runs
@@ -2632,105 +2648,28 @@ class WhaleFollower(Strategy):
         return False
 
     def _adjust_size_for_liquidity(self, size_usd: float, instrument_id) -> float:
-        """Adjust position size based on market liquidity tier."""
-        timing = self._get_market_event_time(instrument_id)
-        liq_tier = timing.get("liquidity_tier", "tier3")
-        volume = timing.get("volume", 0)
-        liquidity = timing.get("liquidity", 0)
-        
-        # Liquidity-based sizing adjustments
-        if liq_tier == "tier4" or (volume + liquidity) < LIQUIDITY_TIER4_THRESHOLD:
-            # Illiquid: reduce to 25% of Kelly size
-            adjusted = size_usd * LIQUIDITY_TIER4_MULTIPLIER
-            self.log.info(f"Liquidity adjustment (tier4): ${size_usd:,.0f} → ${adjusted:,.0f}")
-            return adjusted
-        elif liq_tier == "tier3" or (volume + liquidity) < LIQUIDITY_TIER3_THRESHOLD:
-            # Moderate: reduce to 50% of Kelly size
-            adjusted = size_usd * LIQUIDITY_TIER3_MULTIPLIER
-            self.log.info(f"Liquidity adjustment (tier3): ${size_usd:,.0f} → ${adjusted:,.0f}")
-            return adjusted
-        elif liq_tier == "tier2":
-            # Good: reduce to 75% of Kelly size
-            adjusted = size_usd * LIQUIDITY_TIER2_MULTIPLIER
-            self.log.info(f"Liquidity adjustment (tier2): ${size_usd:,.0f} → ${adjusted:,.0f}")
-            return adjusted
-        
-        return size_usd  # tier1: full Kelly size
+        from strategies.wf_kelly import adjust_size_for_liquidity
+        return adjust_size_for_liquidity(
+            size_usd=size_usd,
+            instrument_id_str=str(instrument_id),
+            get_market_event_time_func=self._get_market_event_time,
+            log_func=self.log.info,
+        )
 
     def _kelly_size(self, price: float, whale_win_rate: float | None = None, edge_score: float = 0.0, available_balance: float | None = None, market_category: str = '') -> float:
-        """Kelly criterion position sizing with edge_score calibration.
-
-        Uses whale's actual historical win rate if available,
-        otherwise falls back to fixed estimate.
-
-        Edge_score calibrates the base Kelly fraction using empirically
-        derived mapping from 1228-trade analysis (2026-05-03).
-        Applies kelly_sanity_checks: max 25% portfolio, min 1% portfolio.
-
-        When available_balance is provided, the effective bankroll is
-        min(config.bankroll, available_balance) — preventing position
-        oversizing as the sandbox balance depletes.
-        """
-        if price <= 0.001 or price >= 0.999:
-            return 0.0
-
-        # Use actual available balance as effective bankroll (prevents
-        # AccountBalanceNegative death spiral when sandbox balance drops)
-        effective_bankroll = min(self.config.bankroll, available_balance) if available_balance is not None else self.config.bankroll
-        p = whale_win_rate if whale_win_rate else 0.55
-        q = 1 - p
-        b = (1 - price) / price
-
-        kelly = (b * p - q) / b
-        if kelly <= 0:
-            return 0.0
-
-        # Apply sports market Kelly multiplier
-        if market_category == 'sports':
-            kelly *= SPORTS_KELLY_MULTIPLIER
-
-        # Base fractional Kelly from config
-        base_size = effective_bankroll * kelly * self.config.kelly_fraction
-
-        # Edge-score calibrated Kelly fraction (overrides base for finer granularity)
-        if self._whale_tiering:
-            edge_kelly = self._whale_tiering.get_edge_kelly(edge_score)
-            # Blend: use the MORE CONSERVATIVE of base fraction and edge-calibrated
-            effective_kelly = min(self.config.kelly_fraction, edge_kelly)
-            # edge_kelly replaces base when edge is well-understood (>=0.35)
-            if edge_score >= 0.35:
-                effective_kelly = edge_kelly
-            size = effective_bankroll * kelly * effective_kelly
-        else:
-            size = base_size
-
-        # Apply sanity checks from config
-        if self._whale_tiering:
-            sanity = self._whale_tiering.get_sanity_checks()
-            if sanity.get("enabled", True):
-                max_pct = sanity.get("max_position_pct", 0.25)
-                min_pct = sanity.get("min_position_pct", 0.01)
-                cap = effective_bankroll * max_pct
-                floor = effective_bankroll * min_pct
-            else:
-                cap = effective_bankroll * self.config.max_position_pct
-                floor = 0.0
-        else:
-            cap = effective_bankroll * self.config.max_position_pct
-            floor = 0.0
-
-        # ── HARD CAP: enforce max_single_position_pct (2% by default) ──
-        # Align with check_position_limits() to prevent kill switch triggers
-        # on routine Kelly-sized positions.
-        max_single_pct = getattr(self.config, "max_single_position_pct", 0.02)
-        hard_cap = effective_bankroll * max_single_pct
-        if cap > hard_cap:
-            cap = hard_cap
-
-        # Clamp: floor <= size <= cap
-        if size < floor:
-            size = floor
-        return round(min(size, cap), 2)
+        from strategies.wf_kelly import kelly_size
+        return kelly_size(
+            bankroll=self.config.bankroll,
+            kelly_fraction=self.config.kelly_fraction,
+            max_position_pct=self.config.max_position_pct,
+            price=price,
+            whale_win_rate=whale_win_rate,
+            edge_score=edge_score,
+            available_balance=available_balance,
+            market_category=market_category,
+            max_single_position_pct=self.config.max_single_position_pct,
+            whale_tiering=self._whale_tiering,
+        )
 
     # ── DEPRECATED: Use _check_all_positions() instead ──
     # _check_all_positions() handles stop-loss/take-profit for ALL positions

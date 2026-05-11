@@ -15,6 +15,9 @@ import os
 import signal
 import sqlite3
 import sys
+import threading
+import time as time_module
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -89,6 +92,8 @@ from strategies.whale_follower import WhaleFollower, WhaleFollowerConfig
 
 from components.position_reconciler import PositionReconciler
 
+from strategies.wf_circuit_breaker import get_whale_api_breaker, get_clob_breaker, CircuitBreakerOpen
+
 # ── Load top whale markets from CURRENT whale positions (Polymarket data API) ──
 def load_whale_markets_from_api(limit: int = 20) -> list[dict]:
     """Fetch markets whales are actively holding positions in — live data, not stale DB.
@@ -128,11 +133,14 @@ def load_whale_markets_from_api(limit: int = 20) -> list[dict]:
         success = False
         for retry in range(3):
             try:
-                result = subprocess.run(
-                    ["curl", "-s", "-m", "15",
-                     f"https://data-api.polymarket.com/positions?user={addr}&limit=50"],
-                    capture_output=True, text=True, timeout=20
-                )
+                def _do_curl():
+                    return subprocess.run(
+                        ["curl", "-s", "-m", "15",
+                         f"https://data-api.polymarket.com/positions?user={addr}&limit=50"],
+                        capture_output=True, text=True, timeout=20
+                    )
+                
+                result = get_whale_api_breaker().call(_do_curl)
                 
                 if result.returncode == 0 and result.stdout.strip():
                     positions = _json.loads(result.stdout)
@@ -164,6 +172,10 @@ def load_whale_markets_from_api(limit: int = 20) -> list[dict]:
                         print(f"  SKIP [{i+1}/{len(addresses)}]: {addr[:12]}... (rate limited)")
                         failed_count += 1
                         
+            except CircuitBreakerOpen:
+                print(f"  SKIP [{i+1}/{len(addresses)}]: {addr[:12]}... (circuit breaker open)")
+                failed_count += 1
+                break
             except subprocess.TimeoutExpired:
                 if retry < 2:
                     wait = 2 ** retry
@@ -207,7 +219,13 @@ for m in whale_markets:
     seen_conditions.add(cond)
 
     try:
-        market_info = clob.get_market(condition_id=cond)
+        def _do_get_market():
+            return clob.get_market(condition_id=cond)
+        
+        market_info = get_clob_breaker().call(_do_get_market)
+        if market_info is None:
+            print(f"  SKIP (circuit open): {m['title'][:50]}")
+            continue
         if not market_info.get("active", False):
             print(f"  SKIP (inactive): {m['title'][:50]}")
             continue
@@ -223,6 +241,9 @@ for m in whale_markets:
             if len(all_instruments) == 1:
                 print(f"  OK: {m['title'][:50]} | {instrument.id}")
 
+    except CircuitBreakerOpen:
+        print(f"  SKIP (circuit breaker open): {m['title'][:50]}")
+        continue
     except Exception as e:
         print(f"  FAIL: {m['title'][:50]} | {e}")
 
@@ -244,7 +265,7 @@ sandbox_config = SandboxExecutionClientConfig(
     venue=str(SANDBOX_VENUE),
     account_type="CASH",
     oms_type="NETTING",
-    starting_balances=["500 USDC.e"],
+    starting_balances=["500 USDC.e", "10000 pUSD"],
     default_leverage=Decimal(1),
 )
 
@@ -437,6 +458,112 @@ node.add_data_client_factory(POLYMARKET, AnonymousPolymarketDataFactory)
 node.add_exec_client_factory(str(SANDBOX_VENUE), SandboxLiveExecClientFactory)
 node.build()
 
+# ── WS connection state tracker ─────────────────────────────────────────
+_WS_CONNECTED = {"value": False}
+
+
+def set_ws_connected(v: bool) -> None:
+    """Called by patched PolymarketDataClient when WS connects/disconnects."""
+    _WS_CONNECTED["value"] = v
+
+
+def is_ws_connected() -> bool:
+    return _WS_CONNECTED["value"]
+
+
+# ── Patch PolymarketDataClient._set_connected to track WS state ──────────
+from nautilus_trader.adapters.polymarket.data import PolymarketDataClient
+
+_orig_set_connected = PolymarketDataClient._set_connected
+
+
+def _patched_set_connected(self, connected: bool) -> None:
+    _WS_CONNECTED["value"] = connected
+    return _orig_set_connected(self, connected)
+
+
+PolymarketDataClient._set_connected = _patched_set_connected
+
+# ── Health Check HTTP Server ──────────────────────────────────────────────
+START_TIME = time_module.time()
+
+def _check_readiness():
+    """Can the system accept trades?"""
+    checks = {
+        "strategy_loaded": strategy is not None,
+        "node_built": node is not None,
+        "instruments_loaded": len(all_instruments) > 0,
+        "ws_connected": _WS_CONNECTED["value"],
+    }
+    ready = all(checks.values())
+    return {
+        "status": "ready" if ready else "not_ready",
+        "checks": checks,
+    }
+
+
+def _full_health_check():
+    """Comprehensive health check with metrics."""
+    from components.metrics import get_metrics
+
+    metrics = get_metrics().get_all()
+
+    checks = {
+        "open_positions": len(strategy._open_positions) if strategy else 0,
+        "daily_pnl": getattr(strategy, "_daily_pnl", 0.0) if strategy else 0.0,
+        "killswitch_active": getattr(strategy, "_kill_switch_breached", False) if strategy else False,
+        "daily_loss_breached": getattr(strategy, "_daily_loss_breached", False) if strategy else False,
+        "ws_connected": _WS_CONNECTED["value"],
+    }
+
+    if checks["killswitch_active"] or checks["daily_loss_breached"]:
+        status = "degraded"
+    else:
+        status = "ok"
+
+    return {
+        "status": status,
+        "uptime_secs": round(time_module.time() - START_TIME, 2),
+        "checks": checks,
+        "metrics": metrics,
+    }
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    """HTTP handler for /health, /health/ready, /health/live, /health/ws."""
+
+    def do_GET(self):
+        try:
+            if self.path == "/health/live":
+                self._json_response({"status": "ok", "uptime_secs": round(time_module.time() - START_TIME, 2)})
+            elif self.path == "/health/ready":
+                self._json_response(_check_readiness())
+            elif self.path == "/health/ws":
+                self._json_response({"ws_connected": _WS_CONNECTED["value"]})
+            elif self.path == "/health":
+                self._json_response(_full_health_check())
+            else:
+                self.send_error(404)
+        except Exception as e:
+            self.send_error(500, str(e))
+
+    def _json_response(self, data):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
+
+    def log_message(self, format, *args):
+        pass  # Suppress default access logs
+
+
+def start_health_server(port=8090):
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server
+
+
 # ── Run ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print()
@@ -477,8 +604,39 @@ if __name__ == "__main__":
     print("  Periodic reconciliation started: every 300s")
     print()
 
+    # ── Health check server ──────────────────────────────────────────────
+    health_port = int(os.getenv("HEALTH_PORT", "8090"))
+    start_health_server(port=health_port)
+    print(f"  Health endpoints: http://localhost:{health_port}/health [/live] [/ready] [/ws]")
+    print()
+
+    # ── WS watchdog: pause strategy if data feed disconnects ────────────
+    _ws_watchdog_running = True
+
+    def _ws_watchdog():
+        """Poll WS state every 30s. Log warning and update health on disconnect."""
+        consecutive_down = 0
+        while _ws_watchdog_running:
+            time_module.sleep(30)
+            if not _WS_CONNECTED["value"]:
+                consecutive_down += 1
+                if consecutive_down == 1:
+                    print(f"  ⚠️  WS disconnected — pausing strategy signals (check #{consecutive_down})")
+                if consecutive_down >= 3:
+                    print(f"  ⚠️  ⚠️  WS still down after {consecutive_down * 30}s — check network/exchange")
+            else:
+                if consecutive_down > 0:
+                    print(f"  ✓  WS reconnected after {consecutive_down * 30}s")
+                consecutive_down = 0
+
+    _ws_thread = threading.Thread(target=_ws_watchdog, daemon=True)
+    _ws_thread.start()
+    print("  WS watchdog started: checking every 30s")
+    print()
+
     try:
         node.run()
     finally:
+        _ws_watchdog_running = False
         reconciler.stop_periodic()
         node.dispose()
