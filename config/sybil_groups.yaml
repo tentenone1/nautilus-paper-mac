@@ -1,0 +1,100 @@
+# Sybil Groups Configuration
+# Single source of truth for all sybil pipeline scripts
+# Last updated: 2026-05-11
+
+groups:
+  sybil_group_1:
+    label: "HIGH PRIORITY"
+    priority: "high"
+    wallets:
+      - address: "0x492442EaB586F242B53bDa933fD5dE859c8A3782-1766317541188"
+        pseudonym: "coordinator"
+      - address: "0xacb206b460a17382a734de8d931cc176307eb989"
+        pseudonym: "AppleTime67"
+      - address: "0xe26cacfaa3f695a2a239e5918936b10d56f188cf"
+        pseudonym: "Dvitaminbets"
+      - address: "0xd106952ebf30a3125affd8a23b6c1f30c35fc79c"
+        pseudonym: "Herdonia"
+      - address: "0x437961a3b2684a4835da753e894d4b5cffdb2e16"
+        pseudonym: "NewTeamSosed4"
+      - address: "0xf39651f0addaad0221806d828197064b97feed0d"
+        pseudonym: "Pajamapants"
+      - address: "0xa71093cafc0c099b4ccab24c3cb8018d817923c4"
+        pseudonym: "Talvez10"
+      - address: "0xa8e089ade142c95538e06196e09c85681112ad50"
+        pseudonym: "Wannac"
+      - address: "0x0767aa79d578aead1c849fd9f0fdc6cdb50336b0"
+        pseudonym: "beetlepimp"
+      - address: "0x1117eade222413335b7ec959e5b48c1d3dbc3532"
+        pseudonym: "benwyatt"
+      - address: "0xa5ea13a81d2b7e8e424b182bdc1db08e756bd96a"
+        pseudonym: "bossoskil1"
+      - address: "0x29b52d98ac9ef9414b04164246c95bc63d74cc6c"
+        pseudonym: "loitterer"
+      - address: "0x84cfffc3f16dcc353094de30d4a45226eccd2f63"
+        pseudonym: "mooseborzoi"
+      - address: "0x32ccd9015a900fde62040162a04bedf093c668b3"
+        pseudonym: "pilotlady"
+      - address: "0xe48109602719f95c247fec255ffb71bab3f985a3"
+        pseudonym: "trade-via-Gravia"
+
+  sybil_group_2:
+    label: "MODERATE"
+    priority: "medium"
+    wallets:
+      - address: "0x5d1d9cfd66ee3068c2a8a57dedf1e1b006dcafd2"
+        pseudonym: "coordinator"
+      - address: "0x3b5c629f114098b0dee345fb78b7a3a013c7126e"
+        pseudonym: "SMCAOMCRL"
+      - address: "0xe96fb5321534971aed483029d2712917fda9ff4b"
+        pseudonym: "meifei123"
+
+  sybil_group_3:
+    label: "LOW IMPACT"
+    priority: "low"
+    wallets:
+      - address: "0x9495425feeb0c250accb89275c97587011b19a27"
+        pseudonym: "LaBradfordSmith22"
+      - address: "0xba389f76b0119aed07c53c9029852664bd97e406"
+        pseudonym: "joblessfinalboss"
+      - address: "0x39d3c773be30fcc73161fc6768f46d563a779ef0"
+        pseudonym: "matanovik"
+
+# Signal generation thresholds
+thresholds:
+  no_bias_fade:
+    min_no_usd: 50000.0
+    min_wallets: 5
+  
+  concentrated_follow:
+    min_yes_usd: 150000.0
+    min_wallets: 2
+    min_yes_ratio: 0.15
+  
+  manipulation_fade:
+    min_wallets: 10
+    max_avg_bet_usd: 400.0
+
+# API configuration
+api:
+  data_api_base: "https://data-api.polymarket.com"
+  trades_limit: 100
+  request_timeout: 15
+  positions_endpoint: "/positions"
+  trades_endpoint: "/v1/trades"
+
+# LLM configuration
+llm:
+  url: "http://localhost:8080/v1/chat/completions"
+  model: "Qwen3.6-35B-A3B"
+  timeout: 300
+  fallback_strategy: "rule-based"  # When LLM unavailable
+
+# Output paths
+paths:
+  research_dir: "research"
+  positions_file: "sybil_positions.json"
+  signals_file: "sybil_signal_queue.json"
+  intelligence_file: "sybil_intelligence.json"
+  llm_strategy_file: "sybil_llm_strategy.json"
+  entity_clusters_file: "entity_clusters.json"

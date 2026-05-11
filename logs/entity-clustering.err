@@ -47,3 +47,48 @@
 2026-05-09 11:00:01 [INFO] PIPELINE COMPLETE
 2026-05-09 11:00:01 [INFO] Matches: 3 | Profiles enriched: /home/elon-1/workspace/nautilus-trading/research/whale_profiles.json
 2026-05-09 11:00:01 [INFO] ============================================================
+2026-05-10 11:00:01 [INFO] ============================================================
+2026-05-10 11:00:01 [INFO] MANIPULATION COUNTER-STRATEGY PIPELINE STARTING
+2026-05-10 11:00:01 [INFO] ============================================================
+2026-05-10 11:00:01 [INFO] Step 1: Running entity clustering...
+2026-05-10 11:00:01 [INFO] Entity clustering completed successfully
+2026-05-10 11:00:01 [INFO] [entity_clustering] Using primary DB (trades.db) — 162 backup vs 56 primary whales
+Entity clustering: 15 whales → /home/elon-1/workspace/nautilus-trading/research/entity_clusters.json
+  Clusters: 1
+    p102-0xf68a28, p2-0x492442... (score=1)
+  Sybil groups: 0
+
+2026-05-10 11:00:01 [INFO] Step 2-4: Matching patterns and enriching profiles...
+2026-05-10 11:00:01 [INFO] Loaded 11 tactics from playbook
+2026-05-10 11:00:01 [INFO] Loaded 1 clusters
+2026-05-10 11:00:01 [INFO] Loaded 431 profiles
+2026-05-10 11:00:01 [INFO] Saved /home/elon-1/workspace/nautilus-trading/research/whale_profiles.json
+2026-05-10 11:00:01 [INFO] Step 5: Writing audit log...
+2026-05-10 11:00:01 [INFO] Audit log written to /home/elon-1/workspace/nautilus-trading/research/manipulation_audit.log
+2026-05-10 11:00:01 [INFO] ============================================================
+2026-05-10 11:00:01 [INFO] PIPELINE COMPLETE
+2026-05-10 11:00:01 [INFO] Matches: 0 | Profiles enriched: /home/elon-1/workspace/nautilus-trading/research/whale_profiles.json
+2026-05-10 11:00:01 [INFO] ============================================================
+2026-05-11 11:00:01 [INFO] ============================================================
+2026-05-11 11:00:01 [INFO] MANIPULATION COUNTER-STRATEGY PIPELINE STARTING
+2026-05-11 11:00:01 [INFO] ============================================================
+2026-05-11 11:00:01 [INFO] Step 1: Running entity clustering...
+2026-05-11 11:00:01 [INFO] Entity clustering completed successfully
+2026-05-11 11:00:01 [INFO] [entity_clustering] Using primary DB (trades.db) — 162 backup vs 56 primary whales
+Entity clustering: 15 whales → /home/elon-1/workspace/nautilus-trading/research/entity_clusters.json
+  Clusters: 2
+    autoresearch_llm, p116-0xfea31b... (score=1)
+    p102-0xf68a28, p2-0x492442... (score=1)
+  Sybil groups: 0
+
+2026-05-11 11:00:01 [INFO] Step 2-4: Matching patterns and enriching profiles...
+2026-05-11 11:00:01 [INFO] Loaded 11 tactics from playbook
+2026-05-11 11:00:01 [INFO] Loaded 2 clusters
+2026-05-11 11:00:01 [INFO] Loaded 431 profiles
+2026-05-11 11:00:01 [INFO] Saved /home/elon-1/workspace/nautilus-trading/research/whale_profiles.json
+2026-05-11 11:00:01 [INFO] Step 5: Writing audit log...
+2026-05-11 11:00:01 [INFO] Audit log written to /home/elon-1/workspace/nautilus-trading/research/manipulation_audit.log
+2026-05-11 11:00:01 [INFO] ============================================================
+2026-05-11 11:00:01 [INFO] PIPELINE COMPLETE
+2026-05-11 11:00:01 [INFO] Matches: 0 | Profiles enriched: /home/elon-1/workspace/nautilus-trading/research/whale_profiles.json
+2026-05-11 11:00:01 [INFO] ============================================================
