@@ -21,26 +21,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-LLM_URL = "http://localhost:8080/v1/chat/completions"
-LLM_MODEL = "Qwen3.6-35B-A3B"
-LLM_TIMEOUT = 300
+from scripts.sybil_config import get_config
+
+config = get_config()
+
+LLM_URL = config.llm.url
+LLM_MODEL = config.llm.model
+LLM_TIMEOUT = config.llm.timeout
 
 DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db.backup-20260506"
 
-SYBIL_WALLETS_G1 = [
-    "0x492442EaB586F242B53bDa933fD5dE859c8A3782-1766317541188",
-    "AppleTime67", "Dvitaminbets", "Herdonia", "NewTeamSosed4",
-    "Pajamapants", "Talvez10", "Wannac", "beetlepimp",
-    "benwyatt", "bossoskil1", "loitterer", "mooseborzoi",
-    "pilotlady", "trade-via-Gravia",
-]
-SYBIL_WALLETS_G2 = [
-    "0x5d1d9cfd66ee3068c2a8a57dedf1e1b006dcafd2",
-    "SMCAOMCRL", "meifei123",
-]
-SYBIL_WALLETS_G3 = [
-    "LaBradfordSmith22", "joblessfinalboss", "matanovik",
-]
+# Sybil wallet lists loaded from centralized config
+_SYBIL_WALLETS_G1 = config.groups.get("sybil_group_1", None)
+_SYBIL_WALLETS_G2 = config.groups.get("sybil_group_2", None)
+_SYBIL_WALLETS_G3 = config.groups.get("sybil_group_3", None)
+
+
+def _get_wallet_pseudonyms(group_def) -> list[str]:
+    """Extract pseudonym list from a SybilGroupDef."""
+    if group_def is None:
+        return []
+    return group_def.pseudonym_list()
 
 
 def query_sybil_history(wallets: list[str]) -> dict:
@@ -229,11 +230,12 @@ def main():
         "groups": {},
     }
 
-    for gid, wallets in [
-        ("sybil_group_1", SYBIL_WALLETS_G1),
-        ("sybil_group_2", SYBIL_WALLETS_G2),
-        ("sybil_group_3", SYBIL_WALLETS_G3),
+    for gid, group_def in [
+        ("sybil_group_1", _SYBIL_WALLETS_G1),
+        ("sybil_group_2", _SYBIL_WALLETS_G2),
+        ("sybil_group_3", _SYBIL_WALLETS_G3),
     ]:
+        wallets = _get_wallet_pseudonyms(group_def)
         result = analyze_group(gid, wallets)
         results["groups"][gid] = result
         logger.info(f"Group {gid} analysis complete")

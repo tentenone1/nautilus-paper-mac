@@ -23,16 +23,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Strategy thresholds
-NO_BIAS_FADE_MIN_NO_USD = 50_000.0
-NO_BIAS_FADE_MIN_WALLETS = 5
+from scripts.sybil_config import get_config
 
-CONCENTRATED_FOLLOW_MIN_YES_USD = 150_000.0
-CONCENTRATED_FOLLOW_MIN_WALLETS = 2
-CONCENTRATED_FOLLOW_MIN_YES_RATIO = 0.15
+config = get_config()
 
-MANIPULATION_FADE_MIN_WALLETS = 10
-MANIPULATION_FADE_MAX_AVG_BET_USD = 400.0
+# Strategy thresholds (from centralized config)
+NO_BIAS_FADE_MIN_NO_USD = config.thresholds.no_bias_fade_min_no_usd
+NO_BIAS_FADE_MIN_WALLETS = config.thresholds.no_bias_fade_min_wallets
+
+CONCENTRATED_FOLLOW_MIN_YES_USD = config.thresholds.concentrated_follow_min_yes_usd
+CONCENTRATED_FOLLOW_MIN_WALLETS = config.thresholds.concentrated_follow_min_wallets
+CONCENTRATED_FOLLOW_MIN_YES_RATIO = config.thresholds.concentrated_follow_min_yes_ratio
+
+MANIPULATION_FADE_MIN_WALLETS = config.thresholds.manipulation_fade_min_wallets
+MANIPULATION_FADE_MAX_AVG_BET_USD = config.thresholds.manipulation_fade_max_avg_bet_usd
 
 
 @dataclass(frozen=True)
@@ -155,8 +159,9 @@ def generate_signals(positions_data: dict) -> list[dict]:
 
 
 def main():
-    input_path = "/home/elon-1/workspace/nautilus-trading/research/sybil_positions.json"
-    output_path = "/home/elon-1/workspace/nautilus-trading/research/sybil_signal_queue.json"
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    input_path = os.path.join(base_dir, "research", "sybil_positions.json")
+    output_path = os.path.join(base_dir, "research", config.paths.signals_file)
 
     if not os.path.exists(input_path):
         logger.error(f"Input file not found: {input_path}")

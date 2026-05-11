@@ -288,15 +288,15 @@ class WhaleIntelligence:
     def should_fade(self, whale_name: str) -> dict | None:
         """Return intel dict if whale should be faded, None otherwise.
         
-        Fade candidates: should_fade=1 AND trust_score>3 AND classification != "sacrificial_account".
-        These are whales that should be traded against (inverted signals).
+        Fade candidates: should_fade=1 AND classification != "sacrificial_account".
+        Trust score is informational only — losing whales have low trust by definition.
         """
         intel = self._intel.get(whale_name)
         if not intel:
             return None
         if intel["classification"] == "sacrificial_account":
             return None  # Hard-reject these, don't fade
-        if intel.get("should_fade") and intel.get("trust_score", 0) > 3:
+        if intel.get("should_fade"):
             return intel
         return None
 

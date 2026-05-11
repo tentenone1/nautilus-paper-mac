@@ -6,11 +6,15 @@ sybil utilities and writes a unified report to research/sybil_intelligence.json.
 
 import json
 import logging
+import os
 import pathlib
 from datetime import datetime, timezone
 from typing import Any, Dict
 
+from scripts.sybil_config import get_config
+
 LOGGER = logging.getLogger(__name__)
+config = get_config()
 
 
 def _safe_call(func: callable, name: str) -> Dict[str, Any]:
@@ -56,7 +60,8 @@ def run_sybil_monitoring() -> Dict[str, Any]:
     }
 
     # Write report
-    out_path = pathlib.Path("research/sybil_intelligence.json")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    out_path = pathlib.Path(base_dir) / config.paths.research_dir / config.paths.intelligence_file
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2))
     LOGGER.info("Sybil intelligence report written to %s", out_path)
