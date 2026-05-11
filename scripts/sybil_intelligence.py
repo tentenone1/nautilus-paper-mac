@@ -28,6 +28,10 @@ from typing import Optional
 
 import requests
 
+from scripts.sybil_config import get_config
+
+config = get_config()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -35,61 +39,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ─── Constants ───────────────────────────────────────────────────────────────
+# ─── Constants (from centralized config) ─────────────────────────────────────
 
-DATA_API = "https://data-api.polymarket.com"
-TRADES_URL_FMT = f"{DATA_API}/v1/trades?user={{user}}&limit={{limit}}"
-POSITIONS_URL_FMT = f"{DATA_API}/positions?user={{user}}"
-REQUEST_TIMEOUT = 15  # seconds
-TRADES_LIMIT = 100  # recent trades per wallet per scan
-
-# Sybil groups from entity clustering (2026-05-08 baseline)
-# Format: group_id -> {label, priority, wallets}
-SYBIL_GROUPS: dict[str, dict] = {
-    "sybil_g1": {
-        "label": "HIGH PRIORITY",
-        "priority": "high",
-        "wallets": [
-            "0x492442EaB586F242B53bDa933fD5dE859c8A3782-1766317541188",
-            "AppleTime67",
-            "Dvitaminbets",
-            "Herdonia",
-            "NewTeamSosed4",
-            "Pajamapants",
-            "Talvez10",
-            "Wannac",
-            "beetlepimp",
-            "benwyatt",
-            "bossoskil1",
-            "loitterer",
-            "mooseborzoi",
-            "pilotlady",
-            "trade-via-Gravia",
-        ],
-    },
-    "sybil_g2": {
-        "label": "MODERATE",
-        "priority": "medium",
-        "wallets": [
-            "0x5d1d9cfd66ee3068c2a8a57dedf1e1b006dcafd2",
-            "SMCAOMCRL",
-            "meifei123",
-        ],
-    },
-    "sybil_g3": {
-        "label": "LOW IMPACT",
-        "priority": "low",
-        "wallets": [
-            "LaBradfordSmith22",
-            "joblessfinalboss",
-            "matanovik",
-        ],
-    },
-}
+DATA_API = config.api.data_api_base
+TRADES_URL_FMT = f"{DATA_API}{config.api.trades_endpoint}?user={{user}}&limit={{limit}}&after={{after_ts}}"
+POSITIONS_URL_FMT = f"{DATA_API}{config.api.positions_endpoint}?user={{user}}"
+REQUEST_TIMEOUT = config.api.request_timeout
+TRADES_LIMIT = config.api.trades_limit
 
 SCRIPT_DIR = Path(__file__).parent
-RESEARCH_DIR = SCRIPT_DIR.parent / "research"
-DEFAULT_OUTPUT = RESEARCH_DIR / "sybil_intelligence.json"
+BASE_DIR = SCRIPT_DIR.parent
+RESEARCH_DIR = config.paths.research_path(BASE_DIR)
+DEFAULT_OUTPUT = BASE_DIR / config.paths.research_dir / config.paths.intelligence_file
+TRADE_SCAN_STATE_FILE = RESEARCH_DIR / "sybil_trade_scan_state.json"
 
 
 # ─── Data Classes ────────────────────────────────────────────────────────────
@@ -144,9 +106,9 @@ class GroupStats:
 
 # ─── API Functions ───────────────────────────────────────────────────────────
 
-def fetch_trades(wallet: str, limit: int = TRADES_LIMIT) -> list[dict]:
+def fetch_trades(wallet: str, limit: int = TRADES_LIMIT, after_ts: int = 0) -> list[dict]:
     """Fetch recent trades for a wallet from Polymarket data API."""
-    url = TRADES_URL_FMT.format(user=wallet, limit=limit)
+    url = TRADES_URL_FMT.format(user=wallet, limit=limit, after_ts=after_ts)
     try:
         resp = requests.get(url, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
@@ -172,6 +134,48 @@ def fetch_positions(wallet: str) -> list[dict]:
     except requests.RequestException as e:
         logger.warning("Failed to fetch positions for %s: %s", wallet[:20], e)
         return []
+
+
+# ─── Trade Scan State ────────────────────────────────────────────────────────
+
+def load_trade_scan_state() -> dict[str, int]:
+    """Load trade scan state from disk.
+    
+    Returns:
+        Mapping of wallet -> last_trade_ts.
+        Empty dict on first run or if file is missing/corrupt.
+    """
+    if not TRADE_SCAN_STATE_FILE.exists():
+        return {}
+    try:
+        with open(TRADE_SCAN_STATE_FILE, "r") as f:
+            raw = json.load(f)
+        return {
+            wallet: info["last_trade_ts"]
+            for wallet, info in raw.get("wallets", {}).items()
+        }
+    except (json.JSONDecodeError, KeyError, IOError) as e:
+        logger.warning("Failed to load trade scan state: %s", e)
+        return {}
+
+
+def save_trade_scan_state(state: dict[str, int]) -> None:
+    """Persist trade scan state to disk.
+    
+    Args:
+        state: Mapping of wallet -> last_trade_ts.
+    """
+    RESEARCH_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "last_global_scan": datetime.now(timezone.utc).isoformat(),
+        "wallets": {
+            wallet: {"last_trade_ts": ts}
+            for wallet, ts in state.items()
+        },
+    }
+    with open(TRADE_SCAN_STATE_FILE, "w") as f:
+        json.dump(payload, f, indent=2)
+    logger.info("Trade scan state saved to %s", TRADE_SCAN_STATE_FILE)
 
 
 # ─── Analysis Functions ──────────────────────────────────────────────────────
@@ -200,29 +204,44 @@ def aggregate_group_trades(
     wallets: list[str],
     trades_limit: int = TRADES_LIMIT,
 ) -> GroupStats:
-    """Fetch and aggregate trades for all wallets in a sybil group."""
+    """Fetch and aggregate trades for all wallets in a sybil group.
+
+    Incremental: only fetches trades since last scan timestamp per wallet.
+    """
+    group_def = config.groups[group_id]
     stats = GroupStats(
         group_id=group_id,
-        label=SYBIL_GROUPS[group_id]["label"],
-        priority=SYBIL_GROUPS[group_id]["priority"],
+        label=group_def.label,
+        priority=group_def.priority,
         wallet_count=len(wallets),
         scan_timestamp=datetime.now(timezone.utc).isoformat(),
     )
+
+    # Load incremental scan state
+    scan_state = load_trade_scan_state()
+    new_state: dict[str, int] = {}
 
     all_trades: list[WalletTrade] = []
     markets: dict[str, MarketExposure] = {}
 
     for wallet in wallets:
-        raw_trades = fetch_trades(wallet, limit=trades_limit)
+        after_ts = scan_state.get(wallet, 0)
+        raw_trades = fetch_trades(wallet, limit=trades_limit, after_ts=after_ts)
         if not raw_trades:
             stats.error_wallets.append(wallet)
+            # Preserve existing state even if no new trades
+            if wallet in scan_state:
+                new_state[wallet] = scan_state[wallet]
             continue
 
         stats.active_wallets += 1
+        wallet_max_ts = 0
         for raw in raw_trades:
             trade = parse_trade(raw)
             if trade:
                 all_trades.append(trade)
+                if trade.timestamp > wallet_max_ts:
+                    wallet_max_ts = trade.timestamp
 
                 # Aggregate market exposure
                 cid = trade.condition_id
@@ -254,10 +273,21 @@ def aggregate_group_trades(
                 exp.wallet_count = len(exp.wallets)
                 if trade.timestamp > exp.latest_trade_ts:
                     exp.latest_trade_ts = trade.timestamp
+                # Volume-weighted average price (not wallet-count weighted)
+                prev_volume = exp.total_volume - trade.size  # volume before this trade
                 exp.avg_entry_price = (
-                    (exp.avg_entry_price * (exp.wallet_count - 1) + trade.price)
-                    / exp.wallet_count
+                    (exp.avg_entry_price * prev_volume + trade.price * trade.size)
+                    / exp.total_volume
                 )
+
+        # Update state with max timestamp from this wallet's trades
+        if wallet_max_ts > 0:
+            new_state[wallet] = wallet_max_ts
+        elif wallet in scan_state:
+            new_state[wallet] = scan_state[wallet]
+
+    # Persist updated scan state
+    save_trade_scan_state(new_state)
 
     # Compute group-level stats
     stats.total_trades_analyzed = len(all_trades)
@@ -420,9 +450,10 @@ def main() -> None:
     all_stats: list[GroupStats] = []
     all_signals: list[dict] = []
 
-    for group_id, group_data in SYBIL_GROUPS.items():
-        logger.info("Scanning %s (%d wallets)...", group_id, len(group_data["wallets"]))
-        stats = aggregate_group_trades(group_id, group_data["wallets"], trades_limit)
+    for group_id, group_def in config.groups.items():
+        wallet_addrs = [w.address for w in group_def.wallets]
+        logger.info("Scanning %s (%d wallets)...", group_id, len(wallet_addrs))
+        stats = aggregate_group_trades(group_id, wallet_addrs, trades_limit)
         all_stats.append(stats)
 
         signals = detect_manipulation_signals(stats)
