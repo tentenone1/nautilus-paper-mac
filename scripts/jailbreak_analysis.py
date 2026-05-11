@@ -15,10 +15,13 @@ import time
 import urllib.request as ureq
 from datetime import datetime, timezone
 
-DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db"
-BACKUP_DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db.backup-20260506"
-OUTPUT_PATH = "/home/elon-1/workspace/nautilus-trading/research/jailbreak_analysis.json"
-LLM_URL = "http://192.168.50.148:1234/v1/chat/completions"
+# Resolve relative to the script's location (works on both Mac and 1700)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+NAUTILUS_ROOT = os.path.dirname(SCRIPT_DIR)  # goes up from scripts/ to nautilus-trading/
+DB_PATH = os.path.join(NAUTILUS_ROOT, "research", "trades.db")
+BACKUP_DB_PATH = os.path.join(NAUTILUS_ROOT, "research", "trades.db.archive")
+OUTPUT_PATH = os.path.join(NAUTILUS_ROOT, "research", "jailbreak_analysis.json")
+LLM_URL = "http://127.0.0.1:8080/v1/chat/completions"
 LLM_MODEL = "qwen3.6-35b-a3b-uncensored-hauhaucs-aggressive"
 MIN_TRADES = 5  # Minimum trades for analysis
 

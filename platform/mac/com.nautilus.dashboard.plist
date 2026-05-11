@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nautilus.dashboard</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>cd /Users/tentenone/workspace/nautilus-trading && /Users/tentenone/workspace/nautilus-trading/venv/bin/gunicorn -w 2 -b 0.0.0.0:8502 --access-logfile /Users/tentenone/workspace/nautilus-trading/logs/dashboard.access.log --error-logfile /Users/tentenone/workspace/nautilus-trading/logs/dashboard.error.log --timeout 120 dashboard:app >> /Users/tentenone/workspace/nautilus-trading/logs/dashboard.launchd.log 2>&1</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+</dict>
+</plist>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nautilus.validator</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/tentenone/workspace/nautilus-trading/venv/bin/python</string>
+        <string>/Users/tentenone/workspace/scripts/validator.py</string>
+        <string>/Users/tentenone/workspace/nautilus-trading/grading-latest.json</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/tentenone/workspace/nautilus-trading</string>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Minute</key>
+            <integer>7</integer>
+        </dict>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/tentenone/workspace/nautilus-trading/logs/validator.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tentenone/workspace/nautilus-trading/logs/validator.err</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

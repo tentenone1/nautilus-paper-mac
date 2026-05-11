@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nautilus.paper</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/tentenone/workspace/nautilus-trading/venv/bin/python</string>
+        <string>-u</string>
+        <string>/Users/tentenone/workspace/nautilus-trading/run_paper.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/tentenone/workspace/nautilus-trading</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/tentenone/workspace/nautilus-trading/logs/paper_trading.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tentenone/workspace/nautilus-trading/logs/paper_trading.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+        <key>TRADE_MODE</key>
+        <string>paper</string>
+        <key>NAUTILUS_ROOT</key>
+        <string>/Users/tentenone/workspace/nautilus-trading</string>
+        <key>BANKROLL</key>
+        <string>1000</string>
+    </dict>
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>Memory</key>
+        <integer>2147483648</integer>
+    </dict>
+</dict>
+</plist>

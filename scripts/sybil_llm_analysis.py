@@ -11,10 +11,13 @@ import json
 import logging
 import os
 import sqlite3
-import time
-import urllib.request
+import urllib.request as ureq
 from datetime import datetime, timezone
 
+# Resolve relative to the script's location (works on both Mac and 1700)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+NAUTILUS_ROOT = os.path.dirname(SCRIPT_DIR)  # goes up from scripts/ to nautilus-trading/
+DB_PATH = os.path.join(NAUTILUS_ROOT, "research", "trades.db")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -29,7 +32,7 @@ LLM_URL = config.llm.url
 LLM_MODEL = config.llm.model
 LLM_TIMEOUT = config.llm.timeout
 
-DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db.backup-20260506"
+# DB_PATH is set above via relative path resolution
 
 # Sybil wallet lists loaded from centralized config
 _SYBIL_WALLETS_G1 = config.groups.get("sybil_group_1", None)
@@ -222,7 +225,7 @@ Output ONLY valid JSON in this format:
 
 
 def main():
-    output_path = "/home/elon-1/workspace/nautilus-trading/research/sybil_llm_strategy.json"
+    output_path = "/Users/tentenone/workspace/nautilus-trading/research/sybil_llm_strategy.json"
 
     logger.info("Starting sybil LLM strategy analysis...")
     results = {

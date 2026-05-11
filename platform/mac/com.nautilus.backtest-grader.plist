@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nautilus.backtest-grader</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/tentenone/workspace/nautilus-trading/venv/bin/python</string>
+        <string>/Users/tentenone/workspace/nautilus-trading/backtest_grader.py</string>
+        <string>--days</string>
+        <string>7</string>
+        <string>--json</string>
+        <string>grading-latest.json</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/tentenone/workspace/nautilus-trading</string>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Minute</key>
+            <integer>2</integer>
+        </dict>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/tentenone/workspace/nautilus-trading/logs/backtest_grader.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tentenone/workspace/nautilus-trading/logs/backtest_grader.err</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

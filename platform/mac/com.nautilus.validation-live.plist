@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nautilus.validation-live</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/tentenone/workspace/nautilus-trading/venv/bin/python</string>
+        <string>/Users/tentenone/workspace/nautilus-trading/run_validation_live.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/tentenone/workspace/nautilus-trading</string>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/tentenone/workspace/nautilus-trading/logs/validation_live.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tentenone/workspace/nautilus-trading/logs/validation_live.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+        <key>TRADE_MODE</key>
+        <string>live</string>
+        <key>DAILY_LOSS_LIMIT</key>
+        <string>10</string>
+        <key>NAUTILUS_ROOT</key>
+        <string>/Users/tentenone/workspace/nautilus-trading</string>
+    </dict>
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>Memory</key>
+        <integer>524288000</integer>
+    </dict>
+    <key>WatchPaths</key>
+    <array>
+        <string>/Users/tentenone/workspace/nautilus-trading/.guard/validation-live.ok</string>
+    </array>
+</dict>
+</plist>

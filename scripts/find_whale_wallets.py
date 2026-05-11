@@ -10,8 +10,11 @@ import urllib.request
 import time
 import os
 
-DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db.backup-20260506"
-OUTPUT_PATH = "/home/elon-1/workspace/nautilus-trading/config/known_whale_wallets.json"
+# Resolve relative to the script's location (works on both Mac and 1700)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+NAUTILUS_ROOT = os.path.dirname(SCRIPT_DIR)  # goes up from scripts/ to nautilus-trading/
+DB_PATH = os.path.join(NAUTILUS_ROOT, "research", "trades.db")
+OUTPUT_PATH = os.path.join(NAUTILUS_ROOT, "config", "known_whale_wallets.json")
 
 # Known wallets we already have
 KNOWN = {

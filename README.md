@@ -1,92 +1,80 @@
-# Polymarket Whale Follower
+# Nautilus Trading — Platform Split
 
-NautilusTrader-based strategy that follows whale wallet trades on Polymarket.
-
-## Why nautilus_trader?
-
-We built custom trading systems from scratch (trading-v2, polymarket-executor) and spent weeks debugging infrastructure: path mismatches, state file schemas, duplicate processes, API timeouts. The alpha (whale signals, Kelly sizing) was real but drowned in plumbing issues.
-
-nautilus_trader gives us:
-- **Production-grade execution engine** — Rust core, 22.3k stars, 18k commits
-- **Built-in Polymarket adapter** — data + execution, no custom API code
-- **Same code for backtest and live** — deterministic event-driven architecture
-- **Position tracking, PnL, risk management** — handled by the framework
-- **Multi-venue support** — Polymarket, Bybit, Binance, dYdX, etc.
-
-We focus on alpha. The framework handles plumbing.
-
-## Setup
-
-```bash
-cd ~/workspace/nautilus-trading
-cp .env.example .env
-# Fill in .env with your Polymarket API credentials
-```
-
-## Usage
-
-### Live Trading
-```bash
-source venv/bin/activate
-python run_live.py
-```
-
-### Backtesting
-```bash
-python run_backtest.py --days 30 --bankroll 10000 --kelly 0.25
-```
-
-## Strategy: Whale Follower
-
-**Logic:**
-1. Subscribe to Polymarket market data (quotes + trades)
-2. When a tracked whale makes a large trade → enter position
-3. Position size = Kelly criterion (fractional, conservative)
-4. Exit on stop loss (configurable %) or market resolution
-
-**Config:**
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `BANKROLL` | 10000 | Paper bankroll (USD) |
-| `KELLY_FRACTION` | 0.25 | Fractional Kelly (conservative) |
-| `WHALE_WIN_RATE` | 0.55 | Expected whale win rate |
-| `STOP_LOSS_PCT` | 0.15 | Stop loss threshold |
-| `MAX_POSITION_PCT` | 0.10 | Max position as % of bankroll |
+This repo contains the Nautilus Polymarket Whale Follower trading system, adapted to run on **both Linux (1700) and macOS (Mac failover)** from the same git repository.
 
 ## Architecture
 
 ```
-run_live.py
-  └── TradingNode (nautilus_trader)
-        ├── PolymarketDataClient (WebSocket feed)
-        ├── PolymarketExecClient (CLOB API)
-        └── WhaleFollower (Strategy)
-              ├── on_quote_tick() → check stop loss
-              ├── on_trade_tick() → log trades
-              ├── enter_position() → Kelly-sized limit order
-              └── exit_position() → close position
+nautilus-trading/
+├── platform/
+│   ├── mac/         ← launchd plist files (macOS)
+│   └── linux/       ← systemd .service files (Linux/1700)
+├── deploy-mac.sh    ← Install macOS plists → ~/Library/LaunchAgents/
+└── deploy-linux.sh  ← Install Linux services → ~/.config/systemd/user/
 ```
 
-## Polymarket Credentials
+## Platform Isolation
 
-Get from: https://polymarket.com → Settings → API Keys
+- **macOS launchd** will NOT process `.service` files (Linux format)
+- **Linux systemd** will NOT process `.plist` files (macOS format)
 
-Required env vars:
-- `POLYMARKET_PK` — Polygon wallet private key
-- `POLYMARKET_API_KEY` — API key
-- `POLYMARKET_API_SECRET` — API secret
-- `POLYMARKET_PASSPHRASE` — API passphrase
+Both platforms can safely have both directories — the OS simply ignores the wrong format.
 
-## Market Selection
+## Deployment
 
-Default: GTA VI released before June 2026
-
-To trade a different market, set:
+### On Mac (failover)
 ```bash
-POLYMARKET_CONDITION_ID=0x... POLYMARKET_TOKEN_ID=0x... python run_live.py
+cd ~/workspace/nautilus-trading
+bash deploy-mac.sh
 ```
 
-Find active markets:
+### On 1700 (primary)
 ```bash
-python nautilus_trader/adapters/polymarket/scripts/active_markets.py
+cd ~/workspace/nautilus-trading
+bash deploy-linux.sh
 ```
+
+## Shared Components
+
+Both platforms share:
+- `components/` — trading logic
+- `scripts/` — research, validation, grading pipelines
+- `pipeline/` — data pipeline
+- `run_paper.py` — paper trading executor
+- `dashboard.py` — web dashboard
+
+## Service Files
+
+### macOS (launchd plists in `platform/mac/`)
+- `com.nautilus.autoresearch.plist`
+- `com.nautilus.backtest-grader.plist`
+- `com.nautilus.backup-configs.plist`
+- `com.nautilus.backup-trades.plist`
+- `com.nautilus.dashboard.plist`
+- `com.nautilus.jailbreak.plist`
+- `com.nautilus.killswitch.plist`
+- `com.nautilus.paper-trading.plist`
+- `com.nautilus.paper.plist`
+- `com.nautilus.signal-gap-monitor.plist`
+- `com.nautilus.sports-deep.plist`
+- `com.nautilus.sports-scan.plist`
+- `com.nautilus.sports-whales.plist`
+- `com.nautilus.strategy-daily.plist`
+- `com.nautilus.strategy-edges.plist`
+- `com.nautilus.strategy-ineff.plist`
+- `com.nautilus.strategy-strategies.plist`
+- `com.nautilus.validation-live.plist`
+- `com.nautilus.validator.plist`
+- `com.nautilus.watchdog.plist`
+
+### Linux (systemd services in `platform/linux/`)
+- `dashboard.service`
+- `nautilus-live.service`
+- `nautilus-paper.service`
+
+## Failover
+
+Mac is configured as a warm failover for 1700. If 1700 goes down:
+1. Mac's paper trading and dashboard are already running
+2. All cron jobs are replicated via launchd
+3. To promote Mac to primary: update Polymarket API keys and remove paper-only guard

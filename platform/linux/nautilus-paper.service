@@ -1,0 +1,27 @@
+[Unit]
+Description=Nautilus Polymarket Whale Follower (Paper Trading)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=elon-1
+Group=elon-1
+WorkingDirectory=/home/elon-1/workspace/nautilus-trading
+ExecStart=/home/elon-1/workspace/nautilus-trading/venv/bin/python run_paper.py
+Restart=always
+RestartSec=30
+StartLimitBurst=5
+StartLimitIntervalSec=300
+StandardOutput=append:/home/elon-1/workspace/nautilus-trading/dashboard.log
+StandardError=append:/home/elon-1/workspace/nautilus-trading/dashboard.log
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=4G
+
+[Install]
+WantedBy=default.target

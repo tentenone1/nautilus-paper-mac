@@ -15,12 +15,13 @@ Schedule: daily
 import os
 import sqlite3
 import json
-from collections import defaultdict
 from datetime import datetime, timezone
 
-DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db"
-BACKUP_DB_PATH = "/home/elon-1/workspace/nautilus-trading/research/trades.db.backup-20260506"
-OUTPUT_PATH = "/home/elon-1/workspace/nautilus-trading/research/entity_clusters.json"
+# Resolve relative to the script's location (works on both Mac and 1700)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+NAUTILUS_ROOT = os.path.dirname(SCRIPT_DIR)  # goes up from scripts/ to nautilus-trading/
+BACKUP_DB_PATH = os.path.join(NAUTILUS_ROOT, "research", "trades.db.archive")
+OUTPUT_PATH = os.path.join(NAUTILUS_ROOT, "research", "entity_clusters.json")
 CORRELATION_WINDOW_SECS = 60  # Trades within 1 minute = correlated
 MIN_SHARED_MARKETS = 3  # Minimum shared markets for correlation
 MIN_TRADES = 5

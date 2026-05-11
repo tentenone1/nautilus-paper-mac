@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nautilus.backup-trades</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/tentenone/workspace/nautilus-trading/venv/bin/python</string>
+        <string>/Users/tentenone/workspace/scripts/backup_trades.py</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Minute</key>
+            <integer>4</integer>
+        </dict>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/tentenone/workspace/backups/backup_trades.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tentenone/workspace/backups/backup_trades.err</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>
