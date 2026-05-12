@@ -80,6 +80,12 @@ def _ensure_db_schema(conn: sqlite3.Connection) -> None:
         )
     """)
 
+    # Prevent duplicate (whale, condition) entries — same whale betting same market twice
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_whale_condition "
+        "ON trades(whale_name, condition_id)"
+    )
+
 
 def migrate_trades_db(db_path: Optional[Path] = None) -> bool:
     """Migrate trades database to add Phase 1 validation columns.
@@ -281,6 +287,69 @@ def log_trade_to_db(
                 f"entry={entry_price:.4f}"
             )
         return None
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def update_trade_latency_fields(
+    trade_id: str,
+    detection_delay_ms: int,
+    execution_delay_ms: int,
+    fill_delay_ms: int,
+    total_latency_ms: int,
+    slippage_bps: float,
+    fill_completion_pct: float,
+    db_path: str | None = None,
+) -> bool:
+    """Update latency and slippage fields for an existing trade.
+
+    Called after compute_latencies() and compute_slippage() run in
+    on_order_filled(), so the values are available even though
+    log_trade_to_db() was called earlier with zero defaults.
+
+    Args:
+        trade_id: UUID of the trade to update.
+        detection_delay_ms: Time from whale detection to order submission.
+        execution_delay_ms: Time from submission to first fill.
+        fill_delay_ms: Time from first fill to complete fill.
+        total_latency_ms: Total whale detection to complete fill.
+        slippage_bps: Slippage in basis points.
+        fill_completion_pct: Fill completion percentage (0-100).
+        db_path: Optional override for trades.db path.
+
+    Returns:
+        True on success, False on failure.
+    """
+    db = Path(db_path) if db_path else _DEFAULT_DB_PATH
+    if not db.exists():
+        return False
+    conn = None
+    try:
+        conn = sqlite3.connect(str(db))
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(
+            "UPDATE trades SET "
+            "detection_delay_ms=?, execution_delay_ms=?, fill_delay_ms=?, "
+            "total_latency_ms=?, slippage_bps=?, fill_completion_pct=? "
+            "WHERE trade_id=?",
+            (
+                detection_delay_ms,
+                execution_delay_ms,
+                fill_delay_ms,
+                total_latency_ms,
+                slippage_bps,
+                fill_completion_pct,
+                trade_id,
+            ),
+        )
+        conn.commit()
+        return True
+    except Exception:
+        return False
     finally:
         if conn:
             try:
