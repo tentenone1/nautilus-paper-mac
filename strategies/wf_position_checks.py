@@ -54,6 +54,7 @@ def check_all_positions(
     last_exit_time: dict,
     resolution_poller=None,
     clob_client=None,
+    strategy=None,  # WhaleFollower instance — passed through to exit_position for sports P&L tracking
 ) -> None:
     """Check exit conditions for ALL open positions.
 
@@ -73,6 +74,7 @@ def check_all_positions(
         last_exit_time: dict of inst_key -> timestamp (mutated).
         resolution_poller: Optional ResolutionPoller.
         clob_client: Optional ClobClient.
+        strategy: Optional WhaleFollower instance for sports P&L tracking.
     """
     now = time.time()
 
@@ -106,7 +108,8 @@ def check_all_positions(
                     clob_client=clob_client,
                     instrument_id=inst_id,
                     exit_reason="stale_resolution",
-                    market_category=pos_info.get("market_category", "Unknown"),
+                    market_category=pos_info.get("category", "Unknown"),
+                    strategy=strategy,
                 )
         except Exception as e:
             log.debug(f"Phase-0 resolution check error for {inst_key[:50]}...: {e}")
@@ -133,7 +136,8 @@ def check_all_positions(
                 clob_client=clob_client,
                 instrument_id=inst_id,
                 exit_reason="max_hold",
-                market_category=pos_info.get("market_category", "Unknown"),
+                market_category=pos_info.get("category", "Unknown"),
+                strategy=strategy,
             )
         except Exception as e:
             log.error(f"Error exiting expired position {inst_key[:50]}...: {e}")
@@ -149,7 +153,8 @@ def check_all_positions(
                     clob_client=clob_client,
                     instrument_id=inst_id,
                     exit_reason="error_cleanup",
-                    market_category=pos_info.get("market_category", "Unknown"),
+                    market_category=pos_info.get("category", "Unknown"),
+                    strategy=strategy,
                 )
 
     # Phase 2: Check ALL open positions for certainty exits
@@ -189,7 +194,8 @@ def check_all_positions(
                         clob_client=clob_client,
                         instrument_id=inst_id,
                         exit_reason="stale_orphan_cleanup",
-                        market_category=pos_info.get("market_category", "Unknown"),
+                        market_category=pos_info.get("category", "Unknown"),
+                        strategy=strategy,
                     )
                 continue
 
@@ -249,7 +255,8 @@ def check_all_positions(
                     clob_client=clob_client,
                     instrument_id=inst_id,
                     exit_reason="certainty_win",
-                    market_category=pos_info.get("market_category", "Unknown"),
+                    market_category=pos_info.get("category", "Unknown"),
+                    strategy=strategy,
                 )
                 continue
             elif is_certain_loss:
@@ -262,7 +269,8 @@ def check_all_positions(
                 continue
 
             # Phase 3: Sports stop-loss check
-            market_category = pos_info.get("market_category", "Unknown")
+            # FIX: positions stored with key "category" not "market_category"
+            market_category = pos_info.get("category", "Unknown")
             if market_category == "sports":
                 qty = pos.quantity.as_double()
                 if side == "BUY":
@@ -289,6 +297,7 @@ def check_all_positions(
                         instrument_id=inst_id,
                         exit_reason="sports_stop_loss",
                         market_category=market_category,
+                        strategy=strategy,
                     )
                     continue
 
@@ -313,6 +322,7 @@ def check_all_positions(
                         instrument_id=inst_id,
                         exit_reason="resolution_exit",
                         market_category=market_category,
+                        strategy=strategy,
                     )
                     continue
             except Exception as res_err:

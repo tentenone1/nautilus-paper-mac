@@ -51,6 +51,7 @@ def exit_position(
     instrument_id: InstrumentId | None = None,
     exit_reason: str = "manual",
     market_category: str = "",
+    strategy=None,  # WhaleFollower instance — used to write _sports_daily_pnl (fix: was writing to log instead)
 ) -> None:
     """Close current position with P&L tracking and DB update.
 
@@ -65,6 +66,7 @@ def exit_position(
         clob_client: Optional ClobClient for midpoint fetching.
         instrument_id: Instrument to exit. Uses config default if None.
         exit_reason: Reason string for the exit.
+        strategy: Optional WhaleFollower instance. Used to update _sports_daily_pnl.
     """
     inst_id = instrument_id or config.instrument_id
     inst_key = str(inst_id)
@@ -123,7 +125,8 @@ def exit_position(
     )
 
     # Get market category from pos_info or parameter
-    market_cat = pos_info.get("market_category", market_category or "Unknown")
+    # FIX: positions are stored with key "category" not "market_category"
+    market_cat = pos_info.get("category", market_category or "Unknown")
 
     # Calculate P&L
     side = pos_info.get("side", "BUY")
@@ -135,20 +138,23 @@ def exit_position(
     # Track sports-specific P&L
     is_sports, sport_type = is_sports_market(inst_key)
     if is_sports or market_cat.lower() == "sports":
-        sports_pnl = getattr(log, "_sports_daily_pnl", 0.0)
-        sports_date = getattr(log, "_sports_daily_pnl_date", "")
+        # FIX: write to strategy instance (self) not log object
+        # The strategy's _check_daily_loss_limit reads self._sports_daily_pnl
+        target = strategy if strategy is not None else log
+        sports_pnl = getattr(target, "_sports_daily_pnl", 0.0)
+        sports_date = getattr(target, "_sports_daily_pnl_date", "")
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         if sports_date != today_str:
             sports_pnl = 0.0
             sports_date = today_str
         sports_pnl += realized_pnl
-        setattr(log, "_sports_daily_pnl", sports_pnl)
-        setattr(log, "_sports_daily_pnl_date", sports_date)
+        setattr(target, "_sports_daily_pnl", sports_pnl)
+        setattr(target, "_sports_daily_pnl_date", sports_date)
 
         # Check sports daily loss limit
         sports_limit = getattr(config, "sports_daily_loss_limit", 2000.0)
         if sports_pnl <= -sports_limit:
-            setattr(log, "_sports_daily_loss_breached", True)
+            setattr(target, "_sports_daily_loss_breached", True)
             log.error(f"sports_daily_loss_breached component=wf_exits event=sports_daily_loss_breached sports_pnl={round(sports_pnl, 2)} sports_limit={sports_limit}")
 
     realized_return = (

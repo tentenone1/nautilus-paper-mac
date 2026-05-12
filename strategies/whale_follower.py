@@ -548,7 +548,7 @@ class WhaleFollower(Strategy):
         # Periodic exit checks (every 30s, independent of quote flow)
         now = time.time()
         if now - self._exit_timer_last >= self._exit_timer_interval:
-            check_all_positions(config=self.config, cache=self.cache, log=self.log, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob)
+            check_all_positions(config=self.config, cache=self.cache, log=self.log, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob, strategy=self)
             result = check_daily_loss_limit(config=self.config, log=self.log, daily_pnl=self._daily_pnl, daily_pnl_date=self._daily_pnl_date, daily_loss_breached=self._daily_loss_breached, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob, cache=self.cache)
             self._daily_pnl, self._daily_pnl_date, self._daily_loss_breached = result
             self._exit_timer_last = now
@@ -2159,7 +2159,7 @@ class WhaleFollower(Strategy):
         during quote tick processing. If quotes stop (frozen sports markets,
         WebSocket drops), exits were never checked.
         """
-        check_all_positions(config=self.config, cache=self.cache, log=self.log, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob)
+        check_all_positions(config=self.config, cache=self.cache, log=self.log, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob, strategy=self)
         result = check_daily_loss_limit(config=self.config, log=self.log, daily_pnl=self._daily_pnl, daily_pnl_date=self._daily_pnl_date, daily_loss_breached=self._daily_loss_breached, open_positions=self._open_positions, exited_positions=self._exited_positions, last_exit_time=self._last_exit_time, resolution_poller=self._resolution_poller, clob_client=self._clob, cache=self.cache); self._daily_pnl, self._daily_pnl_date, self._daily_loss_breached = result
         # Heartbeat log for health monitor — throttle to once per minute
         now = time.time()
