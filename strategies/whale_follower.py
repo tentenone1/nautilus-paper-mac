@@ -99,9 +99,14 @@ from strategies.wf_constants import (
     MIN_ENTRY_PRICE,
     MIN_CONFIDENCE,
 )
+from strategies.wf_position_persistence import (
+    save_open_positions,
+    load_open_positions,
+    load_daily_state,
+    save_daily_state,
+)
 from strategies.wf_sports import is_sports_market, get_market_event_time, should_exit_for_sports
-from strategies.wf_db_ops import log_trade_to_db, recover_open_positions
-from strategies.wf_position_persistence import save_open_positions, load_open_positions
+from strategies.wf_db_ops import log_trade_to_db, recover_open_positions, update_trade_latency_fields
 from strategies.wf_signal_proc import on_signal, scan_whale_positions, process_trade_buffer, llm_score_signal
 from strategies.wf_position_checks import check_all_positions, check_daily_loss_limit
 from strategies.wf_position_checks import (
@@ -286,6 +291,9 @@ class WhaleFollowerConfig(StrategyConfig, frozen=True):
     test_mode: bool = False
     test_signal_interval_secs: float = 300.0  # 5 min between synthetic signals
 
+    # MiniMax API key for LLM scoring (llm_score_signal). Load from env if not set.
+    minimaxi_api_key: str = ""
+
     # Backward compat: allow single instrument_id
     @property
     def instrument_id(self) -> InstrumentId:
@@ -345,7 +353,22 @@ class WhaleFollower(Strategy):
                 self._validation_context = None
 
     def on_start(self) -> None:
-        self._sports_daily_pnl: float = 0.0
+        # Load daily P&L state from disk so kill switches survive restarts.
+        # If the stored date is stale (yesterday), returns clean defaults.
+        ds = load_daily_state()
+        self._daily_pnl = ds["daily_pnl"]
+        self._daily_pnl_date = ds["daily_pnl_date"]
+        self._daily_loss_breached = ds["daily_loss_breached"]
+        self._sports_daily_pnl = ds["sports_daily_pnl"]
+        self._sports_daily_pnl_date = ds["sports_daily_pnl_date"]
+        self._sports_daily_loss_breached = ds["sports_daily_loss_breached"]
+        self.log.info(
+            f"Daily state loaded: daily_pnl=${self._daily_pnl:+.2f}, "
+            f"breached={self._daily_loss_breached}, "
+            f"sports_pnl=${self._sports_daily_pnl:+.2f}, "
+            f"sports_breached={self._sports_daily_loss_breached}"
+        )
+
         if not self.config.instrument_ids:
             self.log.error("No instrument_ids configured")
             self.stop()
@@ -852,6 +875,19 @@ class WhaleFollower(Strategy):
                         f"Validation: TRADE_FILLED {trade_id[:8]}... latency={latencies['total_latency_ms']}ms "
                         f"slippage={slippage['slippage_bps']:.1f}bps"
                     )
+                    # ── Update latency fields in DB (written at entry with zeros) ───
+                    try:
+                        update_trade_latency_fields(
+                            trade_id=trade_id,
+                            detection_delay_ms=latencies["detection_delay_ms"],
+                            execution_delay_ms=latencies["execution_delay_ms"],
+                            fill_delay_ms=latencies["fill_delay_ms"],
+                            total_latency_ms=latencies["total_latency_ms"],
+                            slippage_bps=slippage["slippage_bps"],
+                            fill_completion_pct=slippage["fill_completion_pct"],
+                        )
+                    except Exception as lat_err:
+                        self.log.debug(f"Latency DB update failed: {lat_err}")
                 except Exception as e:
                     self.log.warning(f"Validation event emission failed: {e}")
 
@@ -1063,7 +1099,7 @@ class WhaleFollower(Strategy):
                 data=json.dumps(payload).encode(),
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer sk-cp-...ATCc"
+                    "Authorization": f"Bearer {self.config.minimaxi_api_key or os.environ.get('MINIMAX_API_KEY', '')}"
                 },
                 method="POST"
             )
@@ -1851,7 +1887,17 @@ class WhaleFollower(Strategy):
         category = pos_info.get('category', '') or ''
         if category.lower() == 'sports':
             self._sports_daily_pnl += realized_pnl
-        
+
+        # Persist daily state to disk so kill switches survive restarts
+        save_daily_state(
+            daily_pnl=self._daily_pnl,
+            daily_pnl_date=self._daily_pnl_date,
+            daily_loss_breached=self._daily_loss_breached,
+            sports_daily_pnl=self._sports_daily_pnl,
+            sports_daily_pnl_date=self._sports_daily_pnl_date,
+            sports_daily_loss_breached=self._sports_daily_loss_breached,
+        )
+
         pnl_sign = "+" if realized_pnl >= 0 else ""
         self.log.info(
             f"EXIT {exit_reason}: {qty:.0f} shrs @ ${exit_price:.4f} | "
@@ -2139,6 +2185,14 @@ class WhaleFollower(Strategy):
                 f"Closing all positions and stopping auto-trade."
             )
             self._daily_loss_breached = True
+            save_daily_state(
+                daily_pnl=self._daily_pnl,
+                daily_pnl_date=self._daily_pnl_date,
+                daily_loss_breached=self._daily_loss_breached,
+                sports_daily_pnl=self._sports_daily_pnl,
+                sports_daily_pnl_date=self._sports_daily_pnl_date,
+                sports_daily_loss_breached=self._sports_daily_loss_breached,
+            )
             self.exit_all_positions()
 
         if self._sports_daily_loss_breached:
@@ -2150,6 +2204,14 @@ class WhaleFollower(Strategy):
                 f"Closing all positions and stopping auto-trade."
             )
             self._sports_daily_loss_breached = True
+            save_daily_state(
+                daily_pnl=self._daily_pnl,
+                daily_pnl_date=self._daily_pnl_date,
+                daily_loss_breached=self._daily_loss_breached,
+                sports_daily_pnl=self._sports_daily_pnl,
+                sports_daily_pnl_date=self._sports_daily_pnl_date,
+                sports_daily_loss_breached=self._sports_daily_loss_breached,
+            )
             self.exit_all_positions()
 
     def _on_exit_timer(self, timer_name: str = None) -> None:
