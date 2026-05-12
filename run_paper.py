@@ -558,7 +558,7 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 
 def start_health_server(port=8090):
-    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server = HTTPServer(("127.0.0.1", port), HealthHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server

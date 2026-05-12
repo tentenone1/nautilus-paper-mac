@@ -658,4 +658,4 @@ if __name__ == "__main__":
     print(f"  Open: http://{local_ip}:8502")
     print(f"  API:  http://{local_ip}:8502/api/status")
     print("=" * 50)
-    app.run(host="0.0.0.0", port=8502, debug=False)
+    app.run(host="127.0.0.1", port=8502, debug=False)
