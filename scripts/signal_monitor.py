@@ -20,8 +20,8 @@ from datetime import datetime, timezone
 TRADES_API = "https://data-api.polymarket.com/trades?limit=100"
 MIDPOINT_API = "https://clob.polymarket.com/midpoint?token_id={}"
 MARKETS_API = "https://data-api.polymarket.com/markets?limit=100&closed=false&tag=sports"
-STATE_FILE = "/Users/tentenone/workspace/nautilus-trading/research/signal_monitor_state.json"
-OUTPUT_FILE = "/Users/tentenone/workspace/nautilus-trading/research/signal_detections.json"
+STATE_FILE = "research/signal_monitor_state.json"
+OUTPUT_FILE = "research/signal_detections.json"
 
 # Known wallets (limited but verifiable)
 KNOWN_WALLETS = {

@@ -16,8 +16,8 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Optional
 
-TRADE_RECS_FILE = "/Users/tentenone/workspace/nautilus-trading/research/trade_recommendations.json"
-TRACKER_FILE = "/Users/tentenone/workspace/nautilus-trading/research/signal_validation.json"
+TRADE_RECS_FILE = "research/trade_recommendations.json"
+TRACKER_FILE = "research/signal_validation.json"
 CLOB_API = "https://clob.polymarket.com"
 
 NOISE_TITLES = ["highest temperature", "Bitcoin Up or Down", "bitcoin", "temperature", "weather"]

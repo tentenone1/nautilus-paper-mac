@@ -12,8 +12,8 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 
-DB_PATH = "/Users/tentenone/workspace/nautilus-trading/pipeline/data/whale_discovery.db"
-PROFILES_PATH = "/Users/tentenone/workspace/nautilus-trading/research/whale_profiles.json"
+DB_PATH = "pipeline/data/whale_discovery.db"
+PROFILES_PATH = "research/whale_profiles.json"
 LLM_URL = "http://127.0.0.1:8080/v1/chat/completions"
 LLM_MODEL = "qwen3.6-35b-a3b-uncensored-hauhaucs-aggressive"
 BATCH_SIZE = 5  # processed per run

@@ -209,6 +209,18 @@ def on_signal(
         log.info(f"REJECT sports-blacklisted whale: {signal.whale_name}")
         return
 
+    # ---------------------------------------------------------------------
+    # Phase‑2 whitelist/blacklist validation (category & whale type)
+    # This must run before any fade/whale‑profile logic to ensure blocked
+    # categories are rejected early.
+    # ---------------------------------------------------------------------
+    if not validate_phase2_signal(
+        signal=signal,
+        whale_classification="",
+        log=log,
+    ):
+        return
+
     # P1: Manipulation playbook check
     if _is_manipulation_signal({"whale_name": signal.whale_name, "whale_sig": getattr(signal, "whale_address", "")}):
         log.info(f"REJECT manipulation pattern: {signal.whale_name}")
@@ -228,18 +240,18 @@ def on_signal(
         # Continue processing - don't return, just boost confidence
 
 
-    # REJECT: unknown whale signals with zero edge score (noise trades)
-    if (
-        edge_val == 0.0
-        and (
-            not signal.whale_name
-            or signal.whale_name.lower() in ("", "unknown", "unknown whale", "")
-        )
-    ):
+    # REJECT: unknown whale signals with insufficient edge (noise trades)
+    # Skip the LLM call — an unknown whale with no trade history and edge below
+    # the LLM threshold is not worth scoring. Saves ~0.3s per rejection.
+    is_unknown_whale = (
+        not signal.whale_name
+        or signal.whale_name.lower() in ("", "unknown", "unknown whale", "")
+    )
+    if is_unknown_whale and edge_val < 7:
         wallet = getattr(signal, "whale_address", "") or ""
         wallet_info = f" wallet={wallet[:10]}..." if wallet else ""
         log.info(
-            f"REJECT unknown whale zero edge: {signal.whale_name}{wallet_info} | "
+            f"REJECT unknown whale low edge={edge_val:.2f}: {signal.whale_name}{wallet_info} | "
             f"market={getattr(signal, 'market_title', '')[:40]} | "
             f"conf={signal.confidence:.0%}"
         )
@@ -682,8 +694,17 @@ def validate_phase2_signal(
         return False
 
     # ── Whale Type Whitelist Check ──────────────────────────────────────
+    # If no explicit whale classification is provided, skip whale type checks.
+    if not whale_classification:
+        # Bypass whale type filtering; only category validation is required.
+        log.info(
+            f"P2_PASS | category={category_lower} | whale_type=none | "
+            f"whale={whale_name} | market={market_title}"
+        )
+        return True
+
     # Normalize whale classification
-    whale_type = whale_classification.lower() if whale_classification else "unknown"
+    whale_type = whale_classification.lower()
 
     # First check BLOCKED_WHALE_TYPES (hard rejection)
     if whale_type in BLOCKED_WHALE_TYPES:

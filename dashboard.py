@@ -533,6 +533,15 @@ def index():
     return build_html(proc_info, db_stats, log_text, activity, pnl_stats=pnl_stats)
 
 
+@app.route("/api/health")
+def api_health():
+    """Lightweight health check for monitoring — returns 200 if process is alive."""
+    proc_info = get_process_info()
+    return {"status": "ok" if proc_info["running"] else "degraded",
+            "pid": proc_info.get("main_pid"), "uptime_s": proc_info.get("uptime_s", 0),
+            "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
 @app.route("/api/status")
 def api_status():
     proc_info = get_process_info()

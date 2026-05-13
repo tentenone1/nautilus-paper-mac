@@ -15,6 +15,11 @@ from nautilus_trader.model.identifiers import InstrumentId
 TRADE_BUFFER_SIZE_THRESHOLD = 200  # Minimum USD to buffer a trade
 TRADE_BUFFER_FLUSH_COUNT = 5  # Number of trades to trigger buffer flush
 
+# ── Signal Filters ─────────────────────────────────────────────────────────────
+
+MIN_ENTRY_PRICE = 0.01   # Reject entries below 1 cent (near-zero EV long shots)
+MIN_CONFIDENCE = 0.30    # Minimum confidence threshold for any signal
+
 
 # ── Exit Timer Configuration ─────────────────────────────────────────────────
 
@@ -121,7 +126,7 @@ RESOLUTION_EXIT_HOURS = 6  # Exit if market resolves within this many hours
 
 # ── Sports Market Timing ─────────────────────────────────────────────────────
 
-SPORTS_EXIT_HOURS_BEFORE_EVENT = 1  # Exit sports positions this many hours before game
+SPORTS_EXIT_HOURS_BEFORE_EVENT = 3  # Exit sports positions 3 hours before game (was 1)
 SPORTS_KELLY_MULTIPLIER = 0.5  # Halved Kelly for sports (38.6% WR vs 55% breakeven)
 
 # SPORTS WHITELIST: Allow sports markets matching these patterns
@@ -168,7 +173,7 @@ SPORTS_SINGLE_TEAM_PATTERNS = [
     r'^Winner\s+of\s+',
 ]
 
-SPORTS_DAILY_LOSS_LIMIT = 2000  # Max daily loss on sports before blocking new positions
+SPORTS_DAILY_LOSS_LIMIT = 5000  # Max daily loss on sports before blocking new positions (raised from $2,000)
 SPORTS_AUTO_EXIT_LOSS = 250  # Auto-exit sports positions at -$250 unrealized P&L
 
 # Single-team winner market patterns to reject
@@ -236,12 +241,12 @@ ALLOWED_CATEGORIES = frozenset({
     "politics",      # 55%+ win rate, high volume
     "geopolitics",   # 58% win rate, conflict markets
     "general",       # Default category, mixed performance
+    "sports",        # 38% win rate but fade strategy inverts this
 })
 
 # Blocked categories — reject unprofitable/risky categories
 BLOCKED_CATEGORIES = frozenset({
     "crypto",        # 42% win rate, high volatility
-    "sports",        # 38% win rate, time-sensitive exits
     "entertainment", # Unpredictable outcomes
     "finance",       # Low signal quality
     "unknown",       # Unclassified markets
