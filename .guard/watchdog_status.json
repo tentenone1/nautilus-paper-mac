@@ -1,6 +1,6 @@
 {
-    "timestamp": "2026-05-13T05:12:04Z",
-    "status": "FAILED",
-    "detail": "Restart failed",
-    "pid_count": 0
+    "timestamp": "2026-05-13T05:27:01Z",
+    "status": "OK",
+    "detail": "Running normally",
+    "pid_count": 1
 }
