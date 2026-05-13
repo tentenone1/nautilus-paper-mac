@@ -80,9 +80,12 @@ def _ensure_db_schema(conn: sqlite3.Connection) -> None:
         )
     """)
 
-    # Prevent duplicate (whale, condition) entries — same whale betting same market twice
+    # Remove the UNIQUE INDEX on (whale_name, condition_id) — trade_id is already
+    # the PRIMARY KEY and is inherently unique. Whale re-trading the same market
+    # is a valid scenario (scaling in/out) that should NOT be blocked by a
+    # unique constraint. Keeping only the non-unique index on whale_address.
     conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_whale_condition "
+        "CREATE INDEX IF NOT EXISTS idx_trades_whale_condition "
         "ON trades(whale_name, condition_id)"
     )
 
@@ -251,8 +254,10 @@ def log_trade_to_db(
             snapshot_id,
         ))
         conn.execute("COMMIT")
+        conn.close()
+        conn = None
 
-        # Write to Trading Hub Bitable on successful trade
+        # Write to Trading Hub Bitable — AFTER commit so it can't roll back the trade record
         try:
             signal_type = "Bullish" if side == "BUY" else "Bearish"
             signal_entry = {

@@ -190,6 +190,10 @@ def load_whales_from_db():
         conn.close()
         whales = []
         for r in rows:
+            # Skip whales with zero trades and zero win rate — these are placeholder
+            # entries with no real track record and should not be followed
+            if (r["total_trades"] or 0) == 0 and (r["win_rate"] or 0.0) == 0.0:
+                continue
             avg = (
                 25000
                 if r["total_trades"] < 5

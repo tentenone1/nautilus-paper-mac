@@ -40,3 +40,57 @@ def clear_open_positions() -> None:
     """Clear persisted positions (called after full resolution)."""
     if POSITIONS_FILE.exists():
         os.remove(POSITIONS_FILE)
+
+
+# ── Daily P&L state (for kill-switch persistence across restarts) ──────────────
+
+DAILY_STATE_FILE = Path(__file__).parent.parent / "daily_state.json"
+
+
+def load_daily_state() -> dict:
+    """Load daily P&L state from disk.
+
+    Returns defaults if no file exists or date is stale (yesterday).
+    The caller is responsible for checking date freshness.
+    """
+    defaults = {
+        "daily_pnl": 0.0,
+        "daily_pnl_date": "",
+        "daily_loss_breached": False,
+        "sports_daily_pnl": 0.0,
+        "sports_daily_pnl_date": "",
+        "sports_daily_loss_breached": False,
+    }
+    if not DAILY_STATE_FILE.exists():
+        return defaults
+
+    try:
+        with open(DAILY_STATE_FILE) as f:
+            data = json.load(f)
+        return {**defaults, **data}
+    except (json.JSONDecodeError, IOError):
+        return defaults
+
+
+def save_daily_state(
+    daily_pnl: float,
+    daily_pnl_date: str,
+    daily_loss_breached: bool,
+    sports_daily_pnl: float,
+    sports_daily_pnl_date: str,
+    sports_daily_loss_breached: bool,
+) -> None:
+    """Persist daily P&L state to disk so kill switches survive restarts."""
+    data = {
+        "daily_pnl": daily_pnl,
+        "daily_pnl_date": daily_pnl_date,
+        "daily_loss_breached": daily_loss_breached,
+        "sports_daily_pnl": sports_daily_pnl,
+        "sports_daily_pnl_date": sports_daily_pnl_date,
+        "sports_daily_loss_breached": sports_daily_loss_breached,
+    }
+    try:
+        with open(DAILY_STATE_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except IOError:
+        pass  # Non-fatal — logging system may not be up during early init

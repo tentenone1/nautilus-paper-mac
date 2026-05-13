@@ -190,6 +190,10 @@ MIN_ENTRY_PRICE = 0.05  # Reject markets priced below $0.05 (filters 166:1 long 
 # ── Confidence Threshold ───────────────────────────────────────────────────────
 MIN_CONFIDENCE = 0.55  # Minimum confidence to enter a trade
 
+# Sports-specific entry filters (stricter for sports markets)
+SPORTS_MIN_EDGE = 0.20  # Minimum edge_score for sports signals
+SPORTS_MIN_CONFIDENCE = 0.65  # Minimum confidence for sports signals
+
 # ── Liquidity Tier Thresholds (volume + liquidity in USD) ────────────────────
 
 LIQUIDITY_TIER4_THRESHOLD = 100_000  # Illiquid: reduce to 25% of Kelly

@@ -23,7 +23,7 @@ from components.resolution_poller import ResolutionPoller
 
 app = Flask(__name__)
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pipeline", "data", "whale_discovery.db")
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "research", "trades.db")
 NAUTILUS_PROC = "run_paper.py"
 LOG_LINES = 80
 

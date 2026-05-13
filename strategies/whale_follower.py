@@ -284,7 +284,7 @@ class WhaleFollowerConfig(StrategyConfig, frozen=True):
     trailing_stop: bool = True
     trailing_stop_retrace_pct: float = 0.40  # Exit if price retraces 40% from peak gain
     # Max trades per scan cycle (prevents balance exhaustion on restart)
-    max_trades_per_scan: int = 5
+    max_trades_per_scan: int = 20
     # Trade buffer flush interval (seconds)
     trade_buffer_flush_secs: float = 30.0
     # Test mode: inject synthetic signals to exercise pipeline
@@ -450,12 +450,27 @@ class WhaleFollower(Strategy):
                 self._open_positions[inst_key] = {k: v for k, v in pos.items() if k != 'inst_key'}
 
         # Recover open positions from JSON file (restart persistence)
+        # Issue 2 fix: verify each position exists in Nautilus cache before adding
+        # to avoid creating orphans when cache is empty on restart.
         json_positions = load_open_positions()
+        loaded_from_json = 0
         for inst_key, pos_info in json_positions.items():
             if inst_key not in self._open_positions:
-                self._open_positions[inst_key] = pos_info
-        if json_positions:
-            self.log.info(f"[RECOVER] Loaded {len(json_positions)} positions from JSON file")
+                # Verify the position actually exists in Nautilus cache
+                try:
+                    inst_id = InstrumentId.from_str(inst_key)
+                    cache_positions = self.cache.positions_open(instrument_id=inst_id)
+                    if cache_positions and cache_positions[0].quantity.as_double() != 0:
+                        self._open_positions[inst_key] = pos_info
+                        loaded_from_json += 1
+                    else:
+                        self.log.warning(
+                            f"[RECOVER] Skipping orphan {inst_key[:50]}... — not in Nautilus cache"
+                        )
+                except Exception as e:
+                    self.log.warning(f"[RECOVER] Skipping {inst_key[:50]}... — cache check failed: {e}")
+        if loaded_from_json > 0:
+            self.log.info(f"[RECOVER] Loaded {loaded_from_json} verified positions from JSON file")
 
         # Sync recovered positions to metrics (so /health shows accurate counts)
         try:
@@ -746,7 +761,29 @@ class WhaleFollower(Strategy):
 
             import uuid
             trade_id = str(uuid.uuid4())
-            
+            cond_id = inst_id.split("-")[0] if "-" in inst_id else inst_id
+
+            # ── ALWAYS register position for tracking first ──────────────────
+            # Position tracking must NOT depend on DB write success.
+            # DB write can fail (Bitable down, auth issue) but position still needs tracking.
+            self._open_positions[str(event.instrument_id)] = {
+                "whale_name": whale_name,
+                "market_title": market_title,
+                "category": category,
+                "side": event.order_side.name if hasattr(event, 'order_side') else 'BUY',
+                "entry_price": entry_price,
+                "size": size_usd,
+                "entry_time": time.time(),
+                "trade_id": trade_id,
+                "condition_id": cond_id,
+                "venue_position_id": str(getattr(event, 'venue_position_id', '')),
+                "edge_score": edge_score,
+                "confidence": confidence,
+                "kelly_fraction": kelly_fraction,
+            }
+            save_open_positions(self._open_positions)
+            self.log.info(f"[POSITION] Registered {whale_name} | {market_title[:40]} | ${size_usd:.0f}")
+
             # ── DB OPS: Delegate to wf_db_ops module ──
             result = log_trade_to_db(
                 trade_id=trade_id,
@@ -764,36 +801,12 @@ class WhaleFollower(Strategy):
                 kelly_fraction=kelly_fraction,
                 entry_reason=entry_reason,
                 instrument_id=inst_id,
-                condition_id=inst_id.split("-")[0] if "-" in inst_id else inst_id,
+                condition_id=cond_id,
                 log_func=self.log.info,
             )
             if result is None:
-                self.log.error(f"[DB] Failed to log trade, skipping position registration")
-                return
+                self.log.error(f"[DB] log_trade_to_db returned None — position registered but DB record missing")
 
-            conn.close()
-            conn = None
-            
-            self.log.info(f"[DB] Logged trade: {whale_name} | {category} | {market_title[:40]} | ${size_usd:.0f}")
-            
-            # Register position for tracking
-            cond_id = inst_id.split("-")[0] if "-" in inst_id else inst_id
-            self._open_positions[str(event.instrument_id)] = {
-                "whale_name": whale_name,
-                "market_title": market_title,
-                "category": category,
-                "side": event.order_side.name if hasattr(event, 'order_side') else 'BUY',
-                "entry_price": entry_price,
-                "size": size_usd,
-                "entry_time": time.time(),
-                "trade_id": trade_id,
-                "condition_id": cond_id,
-                "venue_position_id": str(getattr(event, 'venue_position_id', '')),
-                "edge_score": edge_score,
-                "confidence": confidence,
-                "kelly_fraction": kelly_fraction,
-            }
-            save_open_positions(self._open_positions)
 
             # ── Update metrics on entry ──────────────────────────────────
             # Use set_open_positions (NOT increment_trade_entered) because position
@@ -1996,12 +2009,31 @@ class WhaleFollower(Strategy):
         now = time.time()
         
         # Phase 1: Duration-based exit — close positions held past max_hold_hours
+        # Issue 3 fix: only force-close at max_hold if market is resolved OR max_hold
+        # is significantly exceeded (2x). Otherwise let the resolution poller handle exit.
         max_hold = self.config.max_hold_hours
-        expired = [k for k, v in self._open_positions.items() if now - v.get("entry_time", 0) > max_hold * 3600]
+        max_hold_secs = max_hold * 3600
+        force_close_threshold = max_hold_secs * 2  # 2x = significantly exceeded
+        expired = [
+            k for k, v in self._open_positions.items()
+            if now - v.get("entry_time", 0) > max_hold_secs
+        ]
         for inst_key in expired:
             try:
                 inst_id = InstrumentId.from_str(inst_key)
-                self.exit_position(inst_id, exit_reason="max_hold")
+                # Check if market is already resolved or max_hold is significantly exceeded
+                from strategies.wf_market_data import should_exit_for_resolution
+                market_resolved = should_exit_for_resolution(inst_key, log_func=self.log.warning)
+                age = now - self._open_positions[inst_key].get("entry_time", 0)
+                significantly_exceeded = age > force_close_threshold
+                if market_resolved or significantly_exceeded:
+                    self.exit_position(inst_id, exit_reason="max_hold")
+                else:
+                    self.log.info(
+                        f"HOLD {inst_key[:50]}...: age={age/3600:.1f}h > max_hold={max_hold}h "
+                        f"but market not resolved and not significantly exceeded (2x), "
+                        f"waiting for resolution poller"
+                    )
             except Exception as e:
                 self.log.error(f"Error exiting expired position {inst_key[:50]}...: {e}")
                 # Clean up stale entry even on error
@@ -2082,9 +2114,11 @@ class WhaleFollower(Strategy):
                     continue
                 elif is_certain_loss:
                     self.log.info(
-                        f"CERTAINTY LOSS BLOCKED (Phase A): {inst_id}: mid={mid:.4f}, "
-                        f"entry={entry:.4f} - holding to resolution instead"
+                        f"CERTAINTY EXIT (LOSS) {inst_id}: mid={mid:.4f}, "
+                        f"entry={entry:.4f}, edge={position_edge:.2f}, "
+                        f"condition_id={pos_info.get('condition_id', '?')[:20]}..."
                     )
+                    self.exit_position(inst_id, exit_reason="certainty_loss")
                     continue
                 else:
                     # ── WHITELIST: Only Spread bets get sports exit signals ──
@@ -2245,25 +2279,24 @@ class WhaleFollower(Strategy):
         self._check_sybil_signals()
         
         # Memory pressure check - graceful restart before OOM
-        # Only available on Linux (uses /proc filesystem)
-        if os.path.exists("/proc/self/status"):
-            try:
-                with open("/proc/self/status") as f:
-                    for line in f:
-                        if line.startswith("VmRSS:"):
-                            rss_kb = int(line.split()[1])
-                            rss_mb = rss_kb / 1024
-                            if rss_mb > MEMORY_PRESSURE_MB:
-                                self.log.warning(f"MEMORY PRESSURE: {rss_mb:.0f}MB RSS - initiating graceful shutdown")
-                                self.stop()
-                            break
-            except Exception:
-                pass
-        else:
-            self.log.debug("Memory pressure check skipped: /proc not available (non-Linux host)")
-        
-        # System-level memory warning — log if total used > 85%
-        # Only available on Linux
+        # Cross-platform: resource.getrusage works on macOS and Linux
+        try:
+            import resource
+            rss_bytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            import sys
+            if sys.platform == "darwin":
+                rss_mb = rss_bytes / (1024 * 1024)
+            else:
+                # Linux: ru_maxrss is in KB
+                rss_mb = rss_bytes / 1024
+
+            if rss_mb > MEMORY_PRESSURE_MB:
+                self.log.warning(f"MEMORY PRESSURE: {rss_mb:.0f}MB RSS - initiating graceful shutdown")
+                self.stop()
+        except Exception:
+            pass
+
+        # System-level memory warning — Linux only (/proc/meminfo)
         if os.path.exists("/proc/meminfo"):
             try:
                 with open("/proc/meminfo") as f:

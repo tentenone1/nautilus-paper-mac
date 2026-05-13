@@ -63,6 +63,23 @@ def _check_pid_lock():
 
 _check_pid_lock()
 
+# ── TRADING MODE GUARD ──────────────────────────────────────────────────
+assert os.getenv("TRADING_MODE") == "paper", (
+    "FATAL: TRADING_MODE must be 'paper'. "
+    "This is NOT live trading. Set: export TRADING_MODE=paper"
+)
+assert os.getenv("PAPER_TRADING") in ("true", "1", "yes"), (
+    "FATAL: PAPER_TRADING must be 'true'. "
+    "This system executes SANDBOX trades only. No real money."
+)
+print("""
+╔══════════════════════════════════════════════════════════════╗
+║  PAPER TRADING MODE — NO REAL MONEY                        ║
+║  TRADING_MODE=paper  |  PAPER_TRADING=true                 ║
+║  SandboxExecutionClient — simulated fills at real prices     ║
+╚══════════════════════════════════════════════════════════════╝
+""")
+
 from decimal import Decimal
 
 # --- Fix 1: Follow HTTP redirects ---
@@ -302,6 +319,7 @@ config_strategy = WhaleFollowerConfig(
     max_position_pct=float(os.getenv("MAX_POSITION_PCT", "0.10")),
     max_single_position_pct=float(os.getenv("MAX_SINGLE_PCT", "0.05")),  # 5% = $25 max on $500
     min_confidence=float(os.getenv("MIN_CONFIDENCE", "0.25")),  # Lower threshold = more trades
+    minimaxi_api_key=os.getenv("MINIMAX_API_KEY", ""),  # LLM scoring — falls back to score=5 if missing
     auto_trade=os.getenv("AUTO_TRADE", "true").lower() == "true",
     test_mode=False,  # Real mode: actual whale signals → real trades
     test_signal_interval_secs=float(os.getenv("TEST_SIGNAL_INTERVAL", "60")),

@@ -47,7 +47,10 @@ def compute_slippage(
     if model == "bounded_adverse":
         # Size relative to visible volume in basis points
         if visible_volume_usd <= 0:
-            size_bps = size_threshold_bps  # default to threshold
+            # No visible volume data — use fixed 5 bps fallback
+            slippage_bps = 5.0
+            slip = price * slippage_bps / 10000
+            return price + slip if side == "BUY" else price - slip
         else:
             size_bps = (order_size_usd / visible_volume_usd) * 10000
         

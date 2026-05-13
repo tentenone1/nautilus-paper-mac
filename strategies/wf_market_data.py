@@ -11,6 +11,9 @@ from datetime import datetime, timezone
 
 from strategies.wf_constants import MAX_SANE_RETURN, RESOLUTION_EXIT_HOURS
 
+_resolution_cache: dict[str, tuple[float, dict]] = {}  # condition_id -> (timestamp, market_data)
+RESOLUTION_CACHE_TTL_SECS = 60
+
 
 def fetch_real_midpoint(condition_id: str) -> float | None:
     """Fetch the real market midpoint price from Polymarket CLOB API.
@@ -130,12 +133,33 @@ def should_exit_for_resolution(
     """
     try:
         cond_id = instrument_id_str.split("-")[0]
+        now = datetime.now(timezone.utc).timestamp()
+
+        if cond_id in _resolution_cache:
+            cached_ts, cached_market = _resolution_cache[cond_id]
+            if now - cached_ts < RESOLUTION_CACHE_TTL_SECS:
+                end_date = cached_market.get("end_date_iso")
+                if end_date:
+                    end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+                    hours_left = (end_dt - datetime.now(timezone.utc)).total_seconds() / 3600
+                    if 0 < hours_left < RESOLUTION_EXIT_HOURS:
+                        return True
+                    if hours_left <= 0:
+                        if log_func:
+                            log_func(
+                                f"Market has already ended ({abs(hours_left):.1f}h ago) — "
+                                f"{cond_id[:16]}..., exiting stale position"
+                            )
+                        return True
+                    return False
+
         resp = requests.get(
             f"https://data-api.polymarket.com/markets/{cond_id}",
             timeout=10,
         )
         if resp.status_code == 200:
             market = resp.json()
+            _resolution_cache[cond_id] = (now, market)
             end_date = market.get("end_date_iso")
             if end_date:
                 end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))

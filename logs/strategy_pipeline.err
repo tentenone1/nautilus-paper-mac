@@ -1,0 +1,438 @@
+12:19:24 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+12:19:24 [INFO] strategy_pipeline: Strategy classification
+12:19:24 [WARNING] strategy_pipeline: No whale data
+12:19:24 [INFO] strategy_pipeline: Done
+12:19:24 [INFO] strategy_pipeline: Starting pipeline: mode=edges
+12:19:24 [INFO] strategy_pipeline: Edge deconstruction
+12:19:24 [WARNING] strategy_pipeline: No whales to analyze
+12:19:24 [INFO] strategy_pipeline: Done
+12:20:00 [INFO] strategy_pipeline: Starting pipeline: mode=ineff
+12:20:00 [INFO] strategy_pipeline: Starting pipeline: mode=daily
+12:20:00 [INFO] strategy_pipeline: Daily strategy recommendation
+12:20:00 [INFO] strategy_pipeline: Market inefficiency scan
+12:20:00 [WARNING] strategy_pipeline: Retry 1/3 after 1.0s: <urlopen error [Errno 61] Connection refused>
+12:20:00 [WARNING] strategy_pipeline: Retry 1/3 after 1.0s: <urlopen error [Errno 61] Connection refused>
+12:20:01 [WARNING] strategy_pipeline: Retry 2/3 after 2.0s: <urlopen error [Errno 61] Connection refused>
+12:20:01 [WARNING] strategy_pipeline: Retry 2/3 after 2.0s: <urlopen error [Errno 61] Connection refused>
+12:20:03 [ERROR] strategy_pipeline: LLM call failed after retries: <urlopen error [Errno 61] Connection refused>
+12:20:03 [ERROR] strategy_pipeline: LLM call failed after retries: <urlopen error [Errno 61] Connection refused>
+12:20:03 [ERROR] strategy_pipeline: LLM failed: LLM endpoint http://127.0.0.1:8080/v1/chat/completions unavailable: <urlopen error [Errno 61] Connection refused>
+12:20:03 [ERROR] strategy_pipeline: LLM failed: LLM endpoint http://127.0.0.1:8080/v1/chat/completions unavailable: <urlopen error [Errno 61] Connection refused>
+12:20:03 [INFO] strategy_pipeline: Done
+12:20:03 [INFO] strategy_pipeline: Done
+12:49:25 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+12:49:25 [INFO] strategy_pipeline: Strategy classification
+12:49:25 [WARNING] strategy_pipeline: No whale data
+12:49:25 [INFO] strategy_pipeline: Done
+13:19:25 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+13:19:25 [INFO] strategy_pipeline: Strategy classification
+13:19:25 [WARNING] strategy_pipeline: No whale data
+13:19:25 [INFO] strategy_pipeline: Done
+13:49:25 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+13:49:25 [INFO] strategy_pipeline: Strategy classification
+13:49:25 [WARNING] strategy_pipeline: No whale data
+13:49:25 [INFO] strategy_pipeline: Done
+14:19:25 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+14:19:25 [INFO] strategy_pipeline: Strategy classification
+14:19:25 [WARNING] strategy_pipeline: No whale data
+14:19:25 [INFO] strategy_pipeline: Done
+14:49:26 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+14:49:26 [INFO] strategy_pipeline: Strategy classification
+14:49:26 [WARNING] strategy_pipeline: No whale data
+14:49:26 [INFO] strategy_pipeline: Done
+15:19:26 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+15:19:26 [INFO] strategy_pipeline: Strategy classification
+15:19:26 [WARNING] strategy_pipeline: No whale data
+15:19:26 [INFO] strategy_pipeline: Done
+15:49:26 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+15:49:26 [INFO] strategy_pipeline: Strategy classification
+15:49:26 [WARNING] strategy_pipeline: No whale data
+15:49:26 [INFO] strategy_pipeline: Done
+16:19:26 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+16:19:26 [INFO] strategy_pipeline: Strategy classification
+16:19:26 [WARNING] strategy_pipeline: No whale data
+16:19:26 [INFO] strategy_pipeline: Done
+16:49:26 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+16:49:26 [INFO] strategy_pipeline: Strategy classification
+16:49:26 [WARNING] strategy_pipeline: No whale data
+16:49:26 [INFO] strategy_pipeline: Done
+17:19:26 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+17:19:26 [INFO] strategy_pipeline: Strategy classification
+17:19:26 [WARNING] strategy_pipeline: No whale data
+17:19:26 [INFO] strategy_pipeline: Done
+17:49:26 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+17:49:26 [INFO] strategy_pipeline: Strategy classification
+17:49:26 [WARNING] strategy_pipeline: No whale data
+17:49:26 [INFO] strategy_pipeline: Done
+19:06:02 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+19:06:02 [INFO] strategy_pipeline: Strategy classification
+19:06:02 [WARNING] strategy_pipeline: No whale data
+19:06:02 [INFO] strategy_pipeline: Done
+19:36:03 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+19:36:03 [INFO] strategy_pipeline: Strategy classification
+19:36:03 [WARNING] strategy_pipeline: No whale data
+19:36:03 [INFO] strategy_pipeline: Done
+20:06:03 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+20:06:03 [INFO] strategy_pipeline: Strategy classification
+20:06:03 [WARNING] strategy_pipeline: No whale data
+20:06:03 [INFO] strategy_pipeline: Done
+20:36:03 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+20:36:03 [INFO] strategy_pipeline: Strategy classification
+20:36:03 [WARNING] strategy_pipeline: No whale data
+20:36:03 [INFO] strategy_pipeline: Done
+21:06:03 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+21:06:03 [INFO] strategy_pipeline: Strategy classification
+21:06:03 [WARNING] strategy_pipeline: No whale data
+21:06:03 [INFO] strategy_pipeline: Done
+21:36:03 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+21:36:03 [INFO] strategy_pipeline: Strategy classification
+21:36:03 [WARNING] strategy_pipeline: No whale data
+21:36:03 [INFO] strategy_pipeline: Done
+22:06:03 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+22:06:03 [INFO] strategy_pipeline: Strategy classification
+22:06:03 [WARNING] strategy_pipeline: No whale data
+22:06:03 [INFO] strategy_pipeline: Done
+22:36:03 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+22:36:03 [INFO] strategy_pipeline: Strategy classification
+22:36:21 [WARNING] strategy_pipeline: JSON parse failed, expected array
+22:36:21 [INFO] strategy_pipeline: Done
+23:06:21 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+23:06:21 [INFO] strategy_pipeline: Strategy classification
+23:06:36 [WARNING] strategy_pipeline: JSON parse failed, expected array
+23:06:36 [INFO] strategy_pipeline: Done
+23:36:38 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+23:36:38 [INFO] strategy_pipeline: Strategy classification
+23:37:05 [WARNING] strategy_pipeline: JSON parse failed, expected array
+23:37:05 [INFO] strategy_pipeline: Done
+00:07:05 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+00:07:05 [INFO] strategy_pipeline: Strategy classification
+00:07:18 [WARNING] strategy_pipeline: JSON parse failed, expected array
+00:07:18 [INFO] strategy_pipeline: Done
+00:25:05 [INFO] strategy_pipeline: Starting pipeline: mode=ineff
+00:25:05 [INFO] strategy_pipeline: Market inefficiency scan
+00:25:27 [WARNING] strategy_pipeline: JSON parse failed, expected dict
+00:25:27 [INFO] strategy_pipeline: Done
+00:37:18 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+00:37:18 [INFO] strategy_pipeline: Strategy classification
+00:37:27 [WARNING] strategy_pipeline: JSON parse failed, expected array
+00:37:27 [INFO] strategy_pipeline: Done
+01:07:27 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+01:07:27 [INFO] strategy_pipeline: Strategy classification
+01:07:46 [WARNING] strategy_pipeline: JSON parse failed, expected array
+01:07:46 [INFO] strategy_pipeline: Done
+01:37:46 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+01:37:46 [INFO] strategy_pipeline: Strategy classification
+01:37:52 [INFO] strategy_pipeline: Saved to strategy_types_20260512_0137.json
+01:37:52 [INFO] strategy_pipeline: JewishNinja               -> UNKNOWN         (30%)
+01:37:52 [INFO] strategy_pipeline: Done
+02:07:52 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+02:07:52 [INFO] strategy_pipeline: Strategy classification
+02:08:06 [WARNING] strategy_pipeline: JSON parse failed, expected array
+02:08:06 [INFO] strategy_pipeline: Done
+02:20:05 [INFO] strategy_pipeline: Starting pipeline: mode=edges
+02:20:05 [INFO] strategy_pipeline: Edge deconstruction
+02:20:22 [WARNING] strategy_pipeline: JSON parse failed, expected array
+02:20:22 [INFO] strategy_pipeline: Done
+02:38:06 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+02:38:06 [INFO] strategy_pipeline: Strategy classification
+02:38:26 [WARNING] strategy_pipeline: JSON parse failed, expected array
+02:38:26 [INFO] strategy_pipeline: Done
+03:08:27 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+03:08:27 [INFO] strategy_pipeline: Strategy classification
+03:08:42 [WARNING] strategy_pipeline: JSON parse failed, expected array
+03:08:42 [INFO] strategy_pipeline: Done
+03:38:43 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+03:38:43 [INFO] strategy_pipeline: Strategy classification
+03:38:51 [WARNING] strategy_pipeline: JSON parse failed, expected array
+03:38:51 [INFO] strategy_pipeline: Done
+04:08:52 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+04:08:52 [INFO] strategy_pipeline: Strategy classification
+04:09:17 [WARNING] strategy_pipeline: JSON parse failed, expected array
+04:09:17 [INFO] strategy_pipeline: Done
+04:39:17 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+04:39:17 [INFO] strategy_pipeline: Strategy classification
+04:39:34 [WARNING] strategy_pipeline: JSON parse failed, expected array
+04:39:34 [INFO] strategy_pipeline: Done
+05:09:34 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+05:09:34 [INFO] strategy_pipeline: Strategy classification
+05:09:45 [WARNING] strategy_pipeline: JSON parse failed, expected array
+05:09:45 [INFO] strategy_pipeline: Done
+05:39:45 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+05:39:45 [INFO] strategy_pipeline: Strategy classification
+05:40:22 [INFO] strategy_pipeline: Saved to strategy_types_20260512_0540.json
+05:40:22 [INFO] strategy_pipeline: JewishNinja               -> UNKNOWN         (30%)
+05:40:22 [INFO] strategy_pipeline: Done
+06:10:22 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+06:10:22 [INFO] strategy_pipeline: Strategy classification
+06:10:52 [INFO] strategy_pipeline: Saved to strategy_types_20260512_0610.json
+06:10:52 [INFO] strategy_pipeline: JewishNinja               -> UNKNOWN         (40%)
+06:10:52 [INFO] strategy_pipeline: Done
+06:12:02 [INFO] strategy_pipeline: Starting pipeline: mode=daily
+06:12:03 [INFO] strategy_pipeline: Daily strategy recommendation
+06:12:39 [WARNING] strategy_pipeline: JSON parse failed, expected dict
+06:12:39 [INFO] strategy_pipeline: Done
+06:40:52 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+06:40:52 [INFO] strategy_pipeline: Strategy classification
+06:41:05 [WARNING] strategy_pipeline: JSON parse failed, expected array
+06:41:05 [INFO] strategy_pipeline: Done
+07:11:05 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+07:11:05 [INFO] strategy_pipeline: Strategy classification
+07:11:15 [WARNING] strategy_pipeline: JSON parse failed, expected array
+07:11:15 [INFO] strategy_pipeline: Done
+07:41:15 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+07:41:15 [INFO] strategy_pipeline: Strategy classification
+07:41:27 [WARNING] strategy_pipeline: JSON parse failed, expected array
+07:41:27 [INFO] strategy_pipeline: Done
+08:11:27 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+08:11:27 [INFO] strategy_pipeline: Strategy classification
+08:12:12 [WARNING] strategy_pipeline: JSON parse failed, expected array
+08:12:12 [INFO] strategy_pipeline: Done
+08:42:12 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+08:42:12 [INFO] strategy_pipeline: Strategy classification
+08:42:56 [INFO] strategy_pipeline: Saved to strategy_types_20260512_0842.json
+08:42:56 [INFO] strategy_pipeline: JewishNinja               -> UNKNOWN         (50%)
+08:42:56 [INFO] strategy_pipeline: Bigboybandi               -> MOMENTUM        (70%)
+08:42:56 [INFO] strategy_pipeline: 0xcF609D3256f0f37f0595E5D -> CONTRARIAN      (60%)
+08:42:56 [INFO] strategy_pipeline: 0x5234c8687FbC415e8c255b3 -> INFORMATION     (65%)
+08:42:56 [INFO] strategy_pipeline: Done
+09:12:56 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+09:12:56 [INFO] strategy_pipeline: Strategy classification
+09:13:48 [WARNING] strategy_pipeline: JSON parse failed, expected array
+09:13:48 [INFO] strategy_pipeline: Done
+09:43:48 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+09:43:48 [INFO] strategy_pipeline: Strategy classification
+09:44:30 [WARNING] strategy_pipeline: JSON parse failed, expected array
+09:44:30 [INFO] strategy_pipeline: Done
+10:14:30 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+10:14:30 [INFO] strategy_pipeline: Strategy classification
+10:15:10 [WARNING] strategy_pipeline: JSON parse failed, expected array
+10:15:10 [INFO] strategy_pipeline: Done
+10:45:10 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+10:45:10 [INFO] strategy_pipeline: Strategy classification
+10:45:51 [WARNING] strategy_pipeline: JSON parse failed, expected array
+10:45:51 [INFO] strategy_pipeline: Done
+11:15:52 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+11:15:52 [INFO] strategy_pipeline: Strategy classification
+11:16:31 [WARNING] strategy_pipeline: JSON parse failed, expected array
+11:16:31 [INFO] strategy_pipeline: Done
+11:46:31 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+11:46:31 [INFO] strategy_pipeline: Strategy classification
+11:47:03 [INFO] strategy_pipeline: Saved to strategy_types_20260512_1147.json
+11:47:03 [INFO] strategy_pipeline: JewishNinja               -> UNKNOWN         (60%)
+11:47:03 [INFO] strategy_pipeline: phonesculptor             -> UNKNOWN         (50%)
+11:47:03 [INFO] strategy_pipeline: Bigboybandi               -> UNKNOWN         (50%)
+11:47:03 [INFO] strategy_pipeline: p219-0xcfb103             -> INFORMATION     (80%)
+11:47:03 [INFO] strategy_pipeline: 0xcF609D3256f0f37f0595E5D -> CONTRARIAN      (60%)
+11:47:03 [INFO] strategy_pipeline: 0x5234c8687FbC415e8c255b3 -> MOMENTUM        (70%)
+11:47:03 [INFO] strategy_pipeline: 0x21eCbb95a15822bBdD4Ab71 -> CONTRARIAN      (60%)
+11:47:03 [INFO] strategy_pipeline: Done
+12:17:03 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+12:17:03 [INFO] strategy_pipeline: Strategy classification
+12:17:34 [WARNING] strategy_pipeline: JSON parse failed, expected array
+12:17:34 [INFO] strategy_pipeline: Done
+12:47:34 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+12:47:34 [INFO] strategy_pipeline: Strategy classification
+12:48:10 [WARNING] strategy_pipeline: JSON parse failed, expected array
+12:48:10 [INFO] strategy_pipeline: Done
+13:18:11 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+13:18:11 [INFO] strategy_pipeline: Strategy classification
+13:18:46 [WARNING] strategy_pipeline: JSON parse failed, expected array
+13:18:46 [INFO] strategy_pipeline: Done
+13:48:46 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+13:48:46 [INFO] strategy_pipeline: Strategy classification
+13:49:30 [WARNING] strategy_pipeline: JSON parse failed, expected array
+13:49:30 [INFO] strategy_pipeline: Done
+14:19:30 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+14:19:30 [INFO] strategy_pipeline: Strategy classification
+14:20:06 [WARNING] strategy_pipeline: JSON parse failed, expected array
+14:20:06 [INFO] strategy_pipeline: Done
+14:50:06 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+14:50:06 [INFO] strategy_pipeline: Strategy classification
+14:50:44 [WARNING] strategy_pipeline: JSON parse failed, expected array
+14:50:44 [INFO] strategy_pipeline: Done
+15:20:44 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+15:20:44 [INFO] strategy_pipeline: Strategy classification
+15:21:23 [WARNING] strategy_pipeline: JSON parse failed, expected array
+15:21:23 [INFO] strategy_pipeline: Done
+15:51:23 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+15:51:23 [INFO] strategy_pipeline: Strategy classification
+15:52:12 [WARNING] strategy_pipeline: JSON parse failed, expected array
+15:52:12 [INFO] strategy_pipeline: Done
+16:22:13 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+16:22:13 [INFO] strategy_pipeline: Strategy classification
+16:23:00 [WARNING] strategy_pipeline: JSON parse failed, expected array
+16:23:00 [INFO] strategy_pipeline: Done
+16:53:00 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+16:53:00 [INFO] strategy_pipeline: Strategy classification
+16:53:40 [WARNING] strategy_pipeline: JSON parse failed, expected array
+16:53:40 [INFO] strategy_pipeline: Done
+17:23:40 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+17:23:40 [INFO] strategy_pipeline: Strategy classification
+17:24:19 [WARNING] strategy_pipeline: JSON parse failed, expected array
+17:24:19 [INFO] strategy_pipeline: Done
+17:54:20 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+17:54:20 [INFO] strategy_pipeline: Strategy classification
+17:54:49 [WARNING] strategy_pipeline: JSON parse failed, expected array
+17:54:49 [INFO] strategy_pipeline: Done
+18:24:49 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+18:24:49 [INFO] strategy_pipeline: Strategy classification
+18:25:21 [WARNING] strategy_pipeline: JSON parse failed, expected array
+18:25:21 [INFO] strategy_pipeline: Done
+18:55:21 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+18:55:21 [INFO] strategy_pipeline: Strategy classification
+18:55:56 [WARNING] strategy_pipeline: JSON parse failed, expected array
+18:55:56 [INFO] strategy_pipeline: Done
+19:25:56 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+19:25:56 [INFO] strategy_pipeline: Strategy classification
+19:26:29 [WARNING] strategy_pipeline: JSON parse failed, expected array
+19:26:29 [INFO] strategy_pipeline: Done
+19:56:29 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+19:56:29 [INFO] strategy_pipeline: Strategy classification
+19:57:00 [WARNING] strategy_pipeline: JSON parse failed, expected array
+19:57:00 [INFO] strategy_pipeline: Done
+20:27:01 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+20:27:01 [INFO] strategy_pipeline: Strategy classification
+20:27:32 [WARNING] strategy_pipeline: JSON parse failed, expected array
+20:27:32 [INFO] strategy_pipeline: Done
+20:57:32 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+20:57:32 [INFO] strategy_pipeline: Strategy classification
+20:58:09 [WARNING] strategy_pipeline: JSON parse failed, expected array
+20:58:09 [INFO] strategy_pipeline: Done
+21:28:09 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+21:28:09 [INFO] strategy_pipeline: Strategy classification
+21:28:43 [WARNING] strategy_pipeline: JSON parse failed, expected array
+21:28:43 [INFO] strategy_pipeline: Done
+21:58:43 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+21:58:43 [INFO] strategy_pipeline: Strategy classification
+21:59:13 [WARNING] strategy_pipeline: JSON parse failed, expected array
+21:59:13 [INFO] strategy_pipeline: Done
+22:29:13 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+22:29:13 [INFO] strategy_pipeline: Strategy classification
+22:29:49 [WARNING] strategy_pipeline: JSON parse failed, expected array
+22:29:49 [INFO] strategy_pipeline: Done
+22:59:49 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+22:59:49 [INFO] strategy_pipeline: Strategy classification
+23:00:23 [WARNING] strategy_pipeline: JSON parse failed, expected array
+23:00:23 [INFO] strategy_pipeline: Done
+23:30:23 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+23:30:23 [INFO] strategy_pipeline: Strategy classification
+23:30:58 [WARNING] strategy_pipeline: JSON parse failed, expected array
+23:30:58 [INFO] strategy_pipeline: Done
+00:00:59 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+00:00:59 [INFO] strategy_pipeline: Strategy classification
+00:01:36 [WARNING] strategy_pipeline: JSON parse failed, expected array
+00:01:36 [INFO] strategy_pipeline: Done
+00:25:02 [INFO] strategy_pipeline: Starting pipeline: mode=ineff
+00:25:02 [INFO] strategy_pipeline: Market inefficiency scan
+00:25:17 [WARNING] strategy_pipeline: JSON parse failed, expected dict
+00:25:17 [INFO] strategy_pipeline: Done
+00:31:36 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+00:31:36 [INFO] strategy_pipeline: Strategy classification
+00:32:05 [WARNING] strategy_pipeline: JSON parse failed, expected array
+00:32:05 [INFO] strategy_pipeline: Done
+01:02:05 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+01:02:05 [INFO] strategy_pipeline: Strategy classification
+01:02:39 [WARNING] strategy_pipeline: JSON parse failed, expected array
+01:02:39 [INFO] strategy_pipeline: Done
+01:32:39 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+01:32:39 [INFO] strategy_pipeline: Strategy classification
+01:33:14 [WARNING] strategy_pipeline: JSON parse failed, expected array
+01:33:14 [INFO] strategy_pipeline: Done
+02:03:14 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+02:03:14 [INFO] strategy_pipeline: Strategy classification
+02:03:48 [WARNING] strategy_pipeline: JSON parse failed, expected array
+02:03:48 [INFO] strategy_pipeline: Done
+02:20:00 [INFO] strategy_pipeline: Starting pipeline: mode=edges
+02:20:00 [INFO] strategy_pipeline: Edge deconstruction
+02:20:14 [WARNING] strategy_pipeline: JSON parse failed, expected array
+02:20:14 [INFO] strategy_pipeline: Done
+02:33:48 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+02:33:48 [INFO] strategy_pipeline: Strategy classification
+02:34:19 [WARNING] strategy_pipeline: JSON parse failed, expected array
+02:34:19 [INFO] strategy_pipeline: Done
+03:04:19 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+03:04:19 [INFO] strategy_pipeline: Strategy classification
+03:04:59 [WARNING] strategy_pipeline: JSON parse failed, expected array
+03:04:59 [INFO] strategy_pipeline: Done
+03:34:59 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+03:34:59 [INFO] strategy_pipeline: Strategy classification
+03:35:33 [WARNING] strategy_pipeline: JSON parse failed, expected array
+03:35:33 [INFO] strategy_pipeline: Done
+04:05:33 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+04:05:33 [INFO] strategy_pipeline: Strategy classification
+04:05:33 [WARNING] strategy_pipeline: Retry 1/3 after 1.0s: HTTP Error 429: Too Many Requests
+04:05:34 [WARNING] strategy_pipeline: Retry 2/3 after 2.0s: HTTP Error 429: Too Many Requests
+04:05:37 [ERROR] strategy_pipeline: LLM call failed after retries: HTTP Error 429: Too Many Requests
+04:05:37 [ERROR] strategy_pipeline: LLM failed: LLM endpoint https://api.minimaxi.com/v1/chat/completions unavailable: HTTP Error 429: Too Many Requests
+04:05:37 [INFO] strategy_pipeline: Done
+04:35:37 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+04:35:37 [INFO] strategy_pipeline: Strategy classification
+04:35:37 [WARNING] strategy_pipeline: Retry 1/3 after 1.0s: HTTP Error 429: Too Many Requests
+04:35:38 [WARNING] strategy_pipeline: Retry 2/3 after 2.0s: HTTP Error 429: Too Many Requests
+04:35:41 [ERROR] strategy_pipeline: LLM call failed after retries: HTTP Error 429: Too Many Requests
+04:35:41 [ERROR] strategy_pipeline: LLM failed: LLM endpoint https://api.minimaxi.com/v1/chat/completions unavailable: HTTP Error 429: Too Many Requests
+04:35:41 [INFO] strategy_pipeline: Done
+05:05:41 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+05:05:41 [INFO] strategy_pipeline: Strategy classification
+05:06:19 [WARNING] strategy_pipeline: JSON parse failed, expected array
+05:06:19 [INFO] strategy_pipeline: Done
+05:36:20 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+05:36:20 [INFO] strategy_pipeline: Strategy classification
+05:36:53 [WARNING] strategy_pipeline: JSON parse failed, expected array
+05:36:53 [INFO] strategy_pipeline: Done
+06:06:53 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+06:06:53 [INFO] strategy_pipeline: Strategy classification
+06:07:29 [WARNING] strategy_pipeline: JSON parse failed, expected array
+06:07:29 [INFO] strategy_pipeline: Done
+06:12:03 [INFO] strategy_pipeline: Starting pipeline: mode=daily
+06:12:03 [INFO] strategy_pipeline: Daily strategy recommendation
+06:12:41 [WARNING] strategy_pipeline: JSON parse failed, expected dict
+06:12:41 [INFO] strategy_pipeline: Done
+06:37:29 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+06:37:29 [INFO] strategy_pipeline: Strategy classification
+06:37:59 [WARNING] strategy_pipeline: JSON parse failed, expected array
+06:37:59 [INFO] strategy_pipeline: Done
+07:08:00 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+07:08:00 [INFO] strategy_pipeline: Strategy classification
+07:08:32 [WARNING] strategy_pipeline: JSON parse failed, expected array
+07:08:32 [INFO] strategy_pipeline: Done
+07:38:32 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+07:38:32 [INFO] strategy_pipeline: Strategy classification
+07:39:12 [WARNING] strategy_pipeline: JSON parse failed, expected array
+07:39:12 [INFO] strategy_pipeline: Done
+08:09:12 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+08:09:12 [INFO] strategy_pipeline: Strategy classification
+08:09:49 [WARNING] strategy_pipeline: JSON parse failed, expected array
+08:09:49 [INFO] strategy_pipeline: Done
+08:39:49 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+08:39:49 [INFO] strategy_pipeline: Strategy classification
+08:40:32 [WARNING] strategy_pipeline: JSON parse failed, expected array
+08:40:32 [INFO] strategy_pipeline: Done
+09:10:32 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+09:10:32 [INFO] strategy_pipeline: Strategy classification
+09:11:16 [WARNING] strategy_pipeline: JSON parse failed, expected array
+09:11:16 [INFO] strategy_pipeline: Done
+09:41:16 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+09:41:16 [INFO] strategy_pipeline: Strategy classification
+09:41:58 [WARNING] strategy_pipeline: JSON parse failed, expected array
+09:41:58 [INFO] strategy_pipeline: Done
+10:11:58 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+10:11:58 [INFO] strategy_pipeline: Strategy classification
+10:12:32 [WARNING] strategy_pipeline: JSON parse failed, expected array
+10:12:32 [INFO] strategy_pipeline: Done
+10:42:33 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+10:42:33 [INFO] strategy_pipeline: Strategy classification
+10:43:14 [WARNING] strategy_pipeline: JSON parse failed, expected array
+10:43:14 [INFO] strategy_pipeline: Done
+11:13:14 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+11:13:14 [INFO] strategy_pipeline: Strategy classification
+11:13:51 [WARNING] strategy_pipeline: JSON parse failed, expected array
+11:13:51 [INFO] strategy_pipeline: Done
+11:43:51 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+11:43:51 [INFO] strategy_pipeline: Strategy classification
+11:44:27 [WARNING] strategy_pipeline: JSON parse failed, expected array
+11:44:27 [INFO] strategy_pipeline: Done
+12:14:28 [INFO] strategy_pipeline: Starting pipeline: mode=strategies
+12:14:28 [INFO] strategy_pipeline: Strategy classification
+12:14:56 [WARNING] strategy_pipeline: JSON parse failed, expected array
+12:14:56 [INFO] strategy_pipeline: Done

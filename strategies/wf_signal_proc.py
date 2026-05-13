@@ -25,6 +25,8 @@ from strategies.wf_constants import (
     SPORTS_EXIT_HOURS_BEFORE_EVENT,
     SPORTS_AUTO_EXIT_LOSS,
     SPORTS_DAILY_LOSS_LIMIT,
+    SPORTS_MIN_EDGE,
+    SPORTS_MIN_CONFIDENCE,
     # Phase 2 whitelist constants
     ALLOWED_CATEGORIES,
     BLOCKED_CATEGORIES,
@@ -179,6 +181,24 @@ def on_signal(
             f"(edge {edge_val:.2f} < {min_edge:.2f})"
         )
         return
+
+    # ── Sports-Specific Entry Filter ────────────────────────────────────
+    # Stricter edge + confidence for sports markets (edge≥0.20, conf≥0.65)
+    is_sports_signal = (
+        is_sports_market(getattr(signal, "market_title", "") or "")[0]
+        or mc.lower() == "sports"
+    )
+    if is_sports_signal:
+        sports_edge = edge_val
+        sports_conf = signal.confidence or 0.0
+        if sports_edge < SPORTS_MIN_EDGE or sports_conf < SPORTS_MIN_CONFIDENCE:
+            log.info(
+                f"REJECT sports below entry filter: {signal.whale_name} | "
+                f"edge={sports_edge:.2f} < {SPORTS_MIN_EDGE:.2f} or "
+                f"conf={sports_conf:.0%} < {SPORTS_MIN_CONFIDENCE:.0%} | "
+                f"market={getattr(signal, 'market_title', '')[:40]}"
+            )
+            return
 
     # REJECT: blacklisted whales
     if signal.whale_name in WHALE_BLACKLIST:
