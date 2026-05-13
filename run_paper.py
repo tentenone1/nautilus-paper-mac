@@ -10,6 +10,7 @@ Usage:
 """
 
 import asyncio
+import faulthandler
 import json
 import os
 import signal
@@ -21,8 +22,29 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Enable faulthandler FIRST — catch C-level crashes and segfaults with Python traceback
+faulthandler.enable()
+
 # Fix: Line-buffered stdout so crash output isn't silently lost
 sys.stdout.reconfigure(line_buffering=True)
+
+# ── SIGABRT handler — write crash trace before dying so we catch the root cause ──
+def _sigabrt_handler(signum, frame):
+    import traceback
+    crash_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs", "sigabrt_crash.log")
+    with open(crash_log, "a") as f:
+        f.write(f"\n{'='*60}\n")
+        f.write(f"SIGABRT received at {time_module.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"PID: {os.getpid()}\n")
+        f.write(f"Thread: {threading.current_thread().name}\n")
+        f.write("Full stack trace:\n")
+        traceback.print_stack(frame, file=f)
+        # Print all thread stacks
+        f.write(f"\nAll threads at crash time:\n")
+        for tid, frame in sys._current_frames().items():
+            f.write(f"\n--- Thread {tid} ---\n")
+            traceback.print_stack(frame, file=f)
+    os.kill(os.getpid(), signal.SIGABRT)  # re-raise after logging
 
 # ── PID file lock — prevent duplicate processes (systemd User= double-fork workaround) ──
 import atexit
@@ -60,6 +82,7 @@ def _check_pid_lock():
 
     atexit.register(_cleanup_pid)
     signal.signal(signal.SIGTERM, _sigterm_handler)
+    signal.signal(signal.SIGABRT, _sigabrt_handler)
 
 _check_pid_lock()
 

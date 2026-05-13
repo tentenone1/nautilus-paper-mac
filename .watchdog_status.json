@@ -1,0 +1,91 @@
+{
+  "state": "stopped",
+  "restart_count": 13,
+  "last_restart": {
+    "timestamp": "2026-05-13T05:03:49.326140+00:00",
+    "exit_code": 0,
+    "uptime_s": 0,
+    "reason": "success"
+  },
+  "history": [
+    {
+      "timestamp": "2026-05-12T19:35:40.197563+00:00",
+      "exit_code": 0,
+      "uptime_s": 5002.8,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-12T19:38:56.291240+00:00",
+      "exit_code": 0,
+      "uptime_s": 3.0,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-12T19:47:42.925051+00:00",
+      "exit_code": 0,
+      "uptime_s": 475.0,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-12T19:53:13.901344+00:00",
+      "exit_code": 0,
+      "uptime_s": 315.0,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-12T19:56:30.680264+00:00",
+      "exit_code": 0,
+      "uptime_s": 196.4,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-12T20:01:49.594894+00:00",
+      "exit_code": 0,
+      "uptime_s": 293.7,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-13T00:49:12.525093+00:00",
+      "exit_code": 0,
+      "uptime_s": 2449.8,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-13T02:19:52.544635+00:00",
+      "exit_code": 0,
+      "uptime_s": 5439.7,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-13T02:31:12.523071+00:00",
+      "exit_code": 0,
+      "uptime_s": 674.4,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-13T02:54:38.515172+00:00",
+      "exit_code": 0,
+      "uptime_s": 1388.1,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-13T04:30:01.786399+00:00",
+      "exit_code": 0,
+      "uptime_s": 5700.5,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-13T04:33:48.637728+00:00",
+      "exit_code": 0,
+      "uptime_s": 226.5,
+      "reason": "success"
+    },
+    {
+      "timestamp": "2026-05-13T05:03:49.326140+00:00",
+      "exit_code": 0,
+      "uptime_s": 0,
+      "reason": "success"
+    }
+  ],
+  "timestamp": "2026-05-13T05:03:49.326206Z"
+}

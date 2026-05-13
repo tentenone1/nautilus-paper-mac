@@ -101,7 +101,6 @@ from strategies.wf_constants import (
 )
 from strategies.wf_sports import is_sports_market, get_market_event_time, should_exit_for_sports
 from strategies.wf_db_ops import log_trade_to_db, recover_open_positions
-from strategies.wf_position_persistence import save_open_positions, load_open_positions
 from strategies.wf_signal_proc import on_signal, scan_whale_positions, process_trade_buffer, llm_score_signal
 from strategies.wf_position_checks import check_all_positions, check_daily_loss_limit
 from strategies.wf_position_checks import (
@@ -230,7 +229,7 @@ STALE_SUBSCRIPTION_TTL_SECS = 3600  # Clean up dynamic subscriptions older than 
 RESOLUTION_EXIT_HOURS = 6  # Exit if market resolves within this many hours
 
 # Sports market timing
-SPORTS_EXIT_HOURS_BEFORE_EVENT = 1  # Exit sports positions this many hours before game
+SPORTS_EXIT_HOURS_BEFORE_EVENT = 3  # Exit sports positions 3 hours before game
 
 # Liquidity tier thresholds (volume + liquidity in USD)
 LIQUIDITY_TIER4_THRESHOLD = 100_000  # Illiquid: reduce to 25% of Kelly
@@ -427,12 +426,13 @@ class WhaleFollower(Strategy):
                 self._open_positions[inst_key] = {k: v for k, v in pos.items() if k != 'inst_key'}
 
         # Recover open positions from JSON file (restart persistence)
-        json_positions = load_open_positions()
-        for inst_key, pos_info in json_positions.items():
-            if inst_key not in self._open_positions:
-                self._open_positions[inst_key] = pos_info
-        if json_positions:
-            self.log.info(f"[RECOVER] Loaded {len(json_positions)} positions from JSON file")
+        # NOTE: wf_position_persistence module missing — position persistence disabled
+        # json_positions = load_open_positions()  # disabled: module not yet created
+        # for inst_key, pos_info in json_positions.items():
+        #     if inst_key not in self._open_positions:
+        #         self._open_positions[inst_key] = pos_info
+        # if json_positions:
+        #     self.log.info(f"[RECOVER] Loaded {len(json_positions)} positions from JSON file")
 
         # Sync recovered positions to metrics (so /health shows accurate counts)
         try:
@@ -770,7 +770,7 @@ class WhaleFollower(Strategy):
                 "confidence": confidence,
                 "kelly_fraction": kelly_fraction,
             }
-            save_open_positions(self._open_positions)
+            # save_open_positions(self._open_positions)  # disabled: module not yet created
 
             # ── Update metrics on entry ──────────────────────────────────
             # Use set_open_positions (NOT increment_trade_entered) because position
@@ -1737,7 +1737,7 @@ class WhaleFollower(Strategy):
         # Look up position info from our registry
         pos_info = self._open_positions.pop(inst_key, {})
         pos_info["inst_key"] = inst_key
-        save_open_positions(self._open_positions)
+        # save_open_positions(self._open_positions)  # disabled: module not yet created
         
         # Simulate exit price
         entry_price = pos_info.get("entry_price", 0.50)
@@ -1961,7 +1961,7 @@ class WhaleFollower(Strategy):
                 # Clean up stale entry even on error
                 if inst_key in self._open_positions:
                     del self._open_positions[inst_key]
-                    save_open_positions(self._open_positions)
+                    # save_open_positions(self._open_positions)  # disabled: module not yet created
         
         # Phase 2: Check ALL open positions for stop-loss, take-profit, resolution exits
         # FIX: iterate self._open_positions (includes dynamic instruments) instead of

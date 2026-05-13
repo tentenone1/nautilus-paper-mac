@@ -189,6 +189,18 @@ def on_signal(
         log.info(f"REJECT sports-blacklisted whale: {signal.whale_name}")
         return
 
+    # ---------------------------------------------------------------------
+    # Phase‑2 whitelist/blacklist validation (category & whale type)
+    # This must run before any fade/whale‑profile logic to ensure blocked
+    # categories are rejected early.
+    # ---------------------------------------------------------------------
+    if not validate_phase2_signal(
+        signal=signal,
+        whale_classification="",
+        log=log,
+    ):
+        return
+
     # P1: Manipulation playbook check
     if _is_manipulation_signal({"whale_name": signal.whale_name, "whale_sig": getattr(signal, "whale_address", "")}):
         log.info(f"REJECT manipulation pattern: {signal.whale_name}")
@@ -662,8 +674,17 @@ def validate_phase2_signal(
         return False
 
     # ── Whale Type Whitelist Check ──────────────────────────────────────
+    # If no explicit whale classification is provided, skip whale type checks.
+    if not whale_classification:
+        # Bypass whale type filtering; only category validation is required.
+        log.info(
+            f"P2_PASS | category={category_lower} | whale_type=none | "
+            f"whale={whale_name} | market={market_title}"
+        )
+        return True
+
     # Normalize whale classification
-    whale_type = whale_classification.lower() if whale_classification else "unknown"
+    whale_type = whale_classification.lower()
 
     # First check BLOCKED_WHALE_TYPES (hard rejection)
     if whale_type in BLOCKED_WHALE_TYPES:
