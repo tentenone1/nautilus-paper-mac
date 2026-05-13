@@ -187,7 +187,7 @@ def validate_credentials() -> None:
 def main():
     validate_credentials()
 
-    print(f"Scanning current whale positions for top {limit} active markets...")
+    print(f"Scanning current whale positions for top 15 active markets...")
     whale_markets = load_top_whale_markets(limit=15)
 
     if not whale_markets:
