@@ -29,21 +29,21 @@ MIN_CONFIDENCE = 0.6
 
 # ── Fallback Hardcoded Whales (used if analysis file missing) ────────────────
 FALLBACK_COPY_WHALES = {
-    "RJW1": "0x85f031d069de300055900c4055c1baeb6bde3f67",
-    "surfandturf": "0x9f2fe025f84839ca81dd8e0338892605702d2ca8",
-    "matanovik": "0x39d3c773be30fcc73161fc6768f46d563a779ef0",
-    "p150-0xba389f": "0xba389f76b0119aed07c53c9029852664bd97e406",
+    "p191-0x652c9e": "0x652c9e1d3a71f42ccd362d9976e117f9a2222af0",
+    "Logan.": "0x510904c9a58f5c5ad799a1b44947077564175e9c",
+    "p183-0x437961": "0x437961a3b2684a4835da753e894d4b5cffdb2e16",
+    "Bagwell306": "0x9c76cdb43fb46454da005fbc82047a64a18ec926",
     "pilotbaby": "0x6815040a7176c958e6ff8818bfe188e80dbd9edb",
-    "Countryside": "0xbddf61af533ff524d27154e589d2d7a81510c684",
+    "snowleopard1": "0xa7dfc51c051eb0452dc4b22d9893610887b85eee",
 }
 
 FALLBACK_FADE_WHALES = {
-    "asdfjh": "0x0eb568f307e9a48af2c3e688ad6074236712c494",
-    "SMCAOMCRL": "0x3b5c629f114098b0dee345fb78b7a3a013c7126e",
-    "benwyatt": "0x1117eade222413335b7ec959e5b48c1d3dbc3532",
-    "JPMorgan101": "0xb6d6e99d3bfe055874a04279f659f009fd57be17",
-    "bossoskil1": "0xa5ea13a81d2b7e8e424b182bdc1db08e756bd96a",
-    "trade-via-Gravia": "0xe48109602719f95c247fec255ffb71bab3f985a3",
+    "p52-0xe96fb5": "0xe96fb5321534971aed483029d2712917fda9ff4b",
+    "p9-0xa71093": "0xa71093cafc0c099b4ccab24c3cb8018d817923c4",
+    "wan123": "0xde7be6d489bce070a959e0cb813128ae659b5f4b",
+    "p112-0xafd492": "0xafd492974cd531aae7786210438ae46b42047e61",
+    "p32-0xe72bb5": "0xe72bb501df5306c75c89383d48a1e81073fbb0a0",
+    "p150-0xba389f": "0xba389f76b0119aed07c53c9029852664bd97e406",
 }
 
 
